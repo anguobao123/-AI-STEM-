@@ -43,6 +43,19 @@ class ExperimentRecord(db.Model):
     confusion_matrix = db.Column(db.Text, default="{}")
     error_samples = db.Column(db.Text, default="[]")
     suggestions = db.Column(db.Text, default="[]")
+    optimization_plan = db.Column(db.Text, default="")
+    reflection = db.Column(db.Text, default="")
+    version_compare = db.Column(db.Text, default="[]")
+    stem_summary = db.Column(db.Text, default="{}")
+    model_version = db.Column(db.Integer, default=0)
+    project_name = db.Column(db.String(200), default="")
+    group_name = db.Column(db.String(100), default="")
+    author_name = db.Column(db.String(100), default="")
+    hypothesis = db.Column(db.Text, default="")
+    variable_description = db.Column(db.Text, default="")
+    dataset_note = db.Column(db.Text, default="")
+    conclusion = db.Column(db.Text, default="")
+    experiment_log = db.Column(db.Text, default="[]")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -60,6 +73,19 @@ class ExperimentRecord(db.Model):
             "confusionMatrix": _safe_json_loads(self.confusion_matrix, {}),
             "errorSamples": _safe_json_loads(self.error_samples, []),
             "suggestions": _safe_json_loads(self.suggestions, []),
+            "optimizationPlan": self.optimization_plan or "",
+            "reflection": self.reflection or "",
+            "versionCompare": _safe_json_loads(self.version_compare, []),
+            "stemSummary": _safe_json_loads(self.stem_summary, {}),
+            "modelVersion": self.model_version or 0,
+            "projectName": self.project_name or "",
+            "groupName": self.group_name or "",
+            "authorName": self.author_name or "",
+            "hypothesis": self.hypothesis or "",
+            "variableDescription": self.variable_description or "",
+            "datasetNote": self.dataset_note or "",
+            "conclusion": self.conclusion or "",
+            "experimentLog": _safe_json_loads(self.experiment_log, []),
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -79,6 +105,19 @@ class ExperimentRecord(db.Model):
             confusion_matrix=_safe_json_dumps(payload.get("confusionMatrix"), {}),
             error_samples=_safe_json_dumps(payload.get("errorSamples"), []),
             suggestions=_safe_json_dumps(payload.get("suggestions"), []),
+            optimization_plan=payload.get("optimizationPlan", ""),
+            reflection=payload.get("reflection", ""),
+            version_compare=_safe_json_dumps(payload.get("versionCompare"), []),
+            stem_summary=_safe_json_dumps(payload.get("stemSummary"), {}),
+            model_version=payload.get("modelVersion", 0),
+            project_name=payload.get("projectName", ""),
+            group_name=payload.get("groupName", ""),
+            author_name=payload.get("authorName", ""),
+            hypothesis=payload.get("hypothesis", ""),
+            variable_description=payload.get("variableDescription", ""),
+            dataset_note=payload.get("datasetNote", ""),
+            conclusion=payload.get("conclusion", ""),
+            experiment_log=_safe_json_dumps(payload.get("experimentLog"), []),
         )
 
 

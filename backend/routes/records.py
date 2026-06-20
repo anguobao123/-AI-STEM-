@@ -148,6 +148,35 @@ def delete_record(record_id):
     return jsonify({"code": 200, "msg": "success", "data": {"recordId": int(record_id), "deleted": True}})
 
 
+@records_bp.put("/records/<record_id>")
+def update_record(record_id):
+    record = ExperimentRecord.query.get(record_id)
+    if not record:
+        return jsonify({"code": 404, "msg": "record not found", "data": None}), 404
+
+    payload = request.get_json(silent=True) or {}
+    # Only update text-type fields that students can edit
+    for field, attr in [
+        ("projectName", "project_name"),
+        ("groupName", "group_name"),
+        ("authorName", "author_name"),
+        ("hypothesis", "hypothesis"),
+        ("variableDescription", "variable_description"),
+        ("datasetNote", "dataset_note"),
+        ("conclusion", "conclusion"),
+        ("optimizationPlan", "optimization_plan"),
+        ("reflection", "reflection"),
+    ]:
+        if field in payload:
+            setattr(record, attr, payload[field])
+    if "stemSummary" in payload:
+        record.stem_summary = __import__("json").dumps(payload["stemSummary"], ensure_ascii=False)
+    if "title" in payload:
+        record.title = payload["title"]
+    db.session.commit()
+    return jsonify({"code": 200, "msg": "success", "data": record.to_dict()})
+
+
 @records_bp.get("/records")
 def list_records():
     items = []
@@ -190,6 +219,14 @@ def list_records():
                 "hasVersionCompare": bool(record_data.get("versionCompare", [])),
                 "reflection": record_data.get("reflection", ""),
                 "stemSummary": record_data.get("stemSummary", {}),
+                "projectName": record_data.get("projectName", ""),
+                "groupName": record_data.get("groupName", ""),
+                "authorName": record_data.get("authorName", ""),
+                "hypothesis": record_data.get("hypothesis", ""),
+                "variableDescription": record_data.get("variableDescription", ""),
+                "datasetNote": record_data.get("datasetNote", ""),
+                "conclusion": record_data.get("conclusion", ""),
+                "experimentLog": record_data.get("experimentLog", []),
             }
         )
     return jsonify({"code": 200, "msg": "success", "data": {"items": items}})

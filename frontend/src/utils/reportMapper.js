@@ -16,6 +16,8 @@ export function mapRecordToReport(record) {
   const classCount = summary.classCount ?? record.datasetSummary?.classCount ?? "-";
   const createdAt = formatDateTime(record.createdAt || record.updatedAt || new Date().toISOString());
 
+  const modelVersion = record.modelVersion ?? 0;
+  const versionLabel = modelVersion === 0 ? "模型 1.0" : "模型 2.0";
   return {
     id: record.recordId,
     code: `EXP-${String(record.recordId).padStart(4, "0")}`,
@@ -62,7 +64,26 @@ export function mapRecordToReport(record) {
       reason: item.reason || "模型在该样本上产生误判，建议结合类别边界与训练样本质量继续分析。"
     })),
     suggestions: buildSuggestions(meta, testAccuracy, errorSamples),
-    conclusion: buildConclusion(meta, testAccuracy, errorSamples.length)
+    modelVersion,
+    versionLabel,
+    optimizationPlan: record.optimizationPlan || "",
+    reflection: record.reflection || "",
+    versionCompare: record.versionCompare || [],
+    stemSummary: record.stemSummary || null,
+    projectName: record.projectName || "",
+    groupName: record.groupName || "",
+    authorName: record.authorName || "",
+    hypothesis: record.hypothesis || "",
+    variableDescription: record.variableDescription || "",
+    datasetNote: record.datasetNote || "",
+    conclusion: record.conclusion || buildConclusion(meta, testAccuracy, errorSamples.length),
+    experimentLog: record.experimentLog || [],
+    stemSummaryText: record.stemSummary
+      ? ["S ?????" + (record.stemSummary.science || ""),
+         "T ?????" + (record.stemSummary.tech || ""),
+         "E ?????" + (record.stemSummary.engineering || ""),
+         "M ?????" + (record.stemSummary.math || "")]
+      : []
   };
 }
 

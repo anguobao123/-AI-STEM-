@@ -43,6 +43,9 @@ const stats = computed(() => {
 const realAchievements = computed(() =>
   records.value.map((item) => {
     const meta = getExperimentMeta(item.experimentId);
+    const displayTitle = item.projectName || item.title || meta.title;
+    const displayGroup = item.groupName || "";
+    const displayAuthor = item.authorName || "";
     const classNames = item.classNames || [];
     const hasV2 = item.hasVersionCompare || (item.modelVersion && item.modelVersion >= 2);
     const planText = item.optimizationPlan || "";
@@ -54,7 +57,7 @@ const realAchievements = computed(() =>
       recordId: item.recordId,
       sourceType: "record",
       sourceLabel: "真实实验",
-      title: item.title || meta.title,
+      title: displayTitle,
       experimentName: meta.shortName || meta.title,
       objective: item.objective || meta.objective || "",
       modelVersion: item.modelVersion || 0,
@@ -69,7 +72,10 @@ const realAchievements = computed(() =>
       stemSummary: stemData,
       savedAt: item.createdAt,
       analysisPath: `/analysis/${item.recordId}`,
-      reportPath: `/report/${item.recordId}`
+      reportPath: `/report/${item.recordId}`,
+      displayGroup,
+      displayAuthor,
+      conclusion: item.conclusion || "" 
     };
   })
 );
@@ -160,6 +166,7 @@ onMounted(async () => {
             <div class="card-header">
               <div class="card-title-row">
                 <h3 class="card-title">{{ item.title }}</h3>
+                <span class="card-byline" v-if="item.displayGroup || item.displayAuthor">{{ item.displayGroup }}{{ item.displayAuthor ? ' / ' + item.displayAuthor : '' }}</span>
                 <el-tag size="small" type="success">{{ item.sourceLabel }}</el-tag>
               </div>
               <span class="card-meta" v-if="item.savedAt">{{ formatDateTime(item.savedAt) }}</span>
@@ -226,7 +233,11 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="card-footer">
+            <div class="card-excerpt" v-if="item.conclusion">
+                <span class="excerpt-label">????</span>
+                <p class="excerpt-text">{{ item.conclusion.length > 100 ? item.conclusion.slice(0, 100) + "..." : item.conclusion }}</p>
+              </div>
+              <div class="card-footer">
               <el-button @click="router.push(item.analysisPath)">查看分析</el-button>
               <el-button type="primary" plain @click="router.push(item.reportPath)">查看报告</el-button>
             </div>
@@ -246,6 +257,7 @@ onMounted(async () => {
             <div class="card-header">
               <div class="card-title-row">
                 <h3 class="card-title">{{ item.title }}</h3>
+                <span class="card-byline" v-if="item.displayGroup || item.displayAuthor">{{ item.displayGroup }}{{ item.displayAuthor ? ' / ' + item.displayAuthor : '' }}</span>
                 <el-tag size="small" type="info">{{ item.sourceLabel }}</el-tag>
               </div>
               <span class="card-meta">课程演示组</span>
@@ -277,7 +289,11 @@ onMounted(async () => {
               </div>
             </div>
 
-            <div class="card-footer">
+            <div class="card-excerpt" v-if="item.conclusion">
+                <span class="excerpt-label">????</span>
+                <p class="excerpt-text">{{ item.conclusion.length > 100 ? item.conclusion.slice(0, 100) + "..." : item.conclusion }}</p>
+              </div>
+              <div class="card-footer">
               <el-button @click="router.push(item.analysisPath)">查看分析</el-button>
               <el-button type="primary" plain @click="router.push(item.reportPath)">查看报告</el-button>
             </div>
@@ -531,4 +547,5 @@ onMounted(async () => {
     flex-direction: column;
   }
 }
+.card-byline { font-size: 12px; color: var(--muted); font-weight: 600; }
 </style>

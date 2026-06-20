@@ -40,6 +40,10 @@ export function getRecordList() {
   return request.get("/records");
 }
 
+export function updateRecord(recordId, payload) {
+  return request.put(`/records/${recordId}`, payload);
+}
+
 export function deleteRecord(recordId) {
   return request.delete(`/records/${recordId}`);
 }

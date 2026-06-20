@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { deleteRecord, getRecordList } from "../utils/api";
+import { deleteRecord, getRecordList, updateRecord } from "../utils/api";
 import { formatDateTime, formatPercent, safeText } from "../utils/formatters";
 import { getExperimentMeta } from "../utils/experimentContent";
 import { exportSavedRecordModel } from "../utils/modelExport";
@@ -13,6 +13,13 @@ const loading = ref(true);
 const error = ref("");
 const deletingId = ref(null);
 const exportingModelId = ref(null);
+const editingId = ref(null);
+const editForm = ref({ projectName: "", groupName: "", authorName: "", conclusion: "" });
+
+const showEditDialog = computed({
+  get: () => !!editingId.value,
+  set: (val) => { if (!val) editingId.value = null; }
+});
 const items = ref([]);
 const keyword = ref("");
 const experimentFilter = ref("");
@@ -46,6 +53,32 @@ async function loadRecords() {
   } finally {
     loading.value = false;
   }
+}
+
+function startEdit(record) {
+  editingId.value = record.recordId;
+  editForm.value = {
+    projectName: record.projectName || "",
+    groupName: record.groupName || "",
+    authorName: record.authorName || "",
+    conclusion: record.conclusion || ""
+  };
+}
+
+async function saveEdit() {
+  if (!editingId.value) return;
+  try {
+    await updateRecord(editingId.value, editForm.value);
+    ElMessage.success("?????");
+    editingId.value = null;
+    await loadRecords();
+  } catch (err) {
+    ElMessage.error(err.message || "????");
+  }
+}
+
+function cancelEdit() {
+  editingId.value = null;
 }
 
 async function handleDelete(record) {
@@ -99,7 +132,7 @@ onMounted(loadRecords);
         <h1 class="page-title">实验记录列表</h1>
       </div>
       <el-button plain @click="router.push('/model-import')">导入模型测试</el-button>
-      <p class="page-subtitle">按行查看每次实验的结果、保存时间和分析报告入口。</p>
+      <p class="page-subtitle">按行查看每次实验的结果、模型版本和优化对比、保存时间和分析报告入口。</p>
     </header>
 
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
@@ -139,7 +172,8 @@ onMounted(loadRecords);
 
           <div class="decision-table__row record-row" v-for="row in filteredItems" :key="row.recordId">
             <div class="record-name" data-label="实验名称">
-              <strong>{{ row.title }}</strong>
+              <strong>{{ row.projectName || row.title }}</strong>
+              <small v-if="row.groupName || row.authorName">{{ row.groupName }}{{ row.authorName ? ' / ' + row.authorName : '' }}</small>
               <small>{{ getExperimentMeta(row.experimentId).title }}</small>
             </div>
             <span data-label="准确率">{{ formatPercent(row.accuracy) }}</span>
@@ -169,6 +203,32 @@ onMounted(loadRecords);
         </div>
       </div>
     </section>
+  
+    <!-- Edit Dialog -->
+    <el-dialog v-model="showEditDialog" title="??????" width="500px" @close="cancelEdit">
+      <div class="edit-form" v-if="editingId">
+        <div class="edit-field">
+          <label>????</label>
+          <input v-model="editForm.projectName" class="filter-input" style="width:100%" />
+        </div>
+        <div class="edit-field">
+          <label>????</label>
+          <input v-model="editForm.groupName" class="filter-input" style="width:100%" />
+        </div>
+        <div class="edit-field">
+          <label>??????</label>
+          <input v-model="editForm.authorName" class="filter-input" style="width:100%" />
+        </div>
+        <div class="edit-field">
+          <label>????</label>
+          <textarea v-model="editForm.conclusion" class="filter-input" style="width:100%;min-height:80px"></textarea>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="cancelEdit">??</el-button>
+        <el-button type="primary" @click="saveEdit">??</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -253,4 +313,9 @@ onMounted(loadRecords);
     align-items: stretch;
   }
 }
+.edit-form { display: flex; flex-direction: column; gap: 14px; }
+.edit-field { display: flex; flex-direction: column; gap: 4px; }
+.edit-field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.edit-field .filter-input { min-height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); }
+.edit-field textarea.filter-input { padding: 10px 12px; resize: vertical; }
 </style>

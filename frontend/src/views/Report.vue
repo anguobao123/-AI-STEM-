@@ -62,7 +62,30 @@ const reportPlainText = computed(() => {
     "八、改进建议",
     ...report.value.suggestions.map((item) => `- ${item}`),
     "",
-    "九、实验结论",
+    "九、优化方案（模型 1.0 → 2.0）",
+    report.value.optimizationPlan || "暂无优化方案",
+    "",
+    "十、模型版本对比",
+    ...(report.value.versionCompare && report.value.versionCompare.length
+      ? report.value.versionCompare.map(
+          (item) => "模型 " + (item.fromVersion + 1) + ".0 → 模型 " + (item.toVersion + 1) + ".0：" + (item.plan || "未记录")
+        )
+      : ["暂无版本对比数据"]),
+    "",
+    "十一、实验反思",
+    report.value.reflection || "暂无反思",
+    "",
+    "十二、STEM 总结",
+    ...(report.value.stemSummary
+      ? [
+          "S 科学探究：" + (report.value.stemSummary.science || ""),
+          "T 技术实现：" + (report.value.stemSummary.tech || ""),
+          "E 工程优化：" + (report.value.stemSummary.engineering || ""),
+          "M 数学分析：" + (report.value.stemSummary.math || "")
+        ]
+      : ["暂无 STEM 总结"]),
+    "",
+    "十三、实验结论",
     report.value.conclusion
   ];
 
@@ -129,8 +152,8 @@ function printReport() {
   <section class="report-page page-layout">
     <header class="page-heading report-toolbar">
       <div class="page-heading__copy">
-        <span class="report-kicker">实验报告</span>
-        <h1 class="page-title">标准图像分类实验报告</h1>
+        <span class="report-kicker">数据如何教会 AI · 实验报告</span>
+        <h1 class="page-title">数据如何教会 AI：图像分类模型实验报告</h1>
         <p class="page-subtitle">报告页只负责正式呈现实验结论，操作记录请回到分析页或记录中心查看。</p>
         <div class="source-indicator">
           <el-tag :type="sourceInfo.type">{{ sourceInfo.label }}</el-tag>
@@ -250,8 +273,38 @@ function printReport() {
         </ul>
       </section>
 
+      <section v-if="report.optimizationPlan" class="report-section">
+        <h3>九、优化方案（模型 1.0 → 2.0）</h3>
+        <p>{{ report.optimizationPlan }}</p>
+      </section>
+
+      <section v-if="report.versionCompare && report.versionCompare.length" class="report-section">
+        <h3>十、模型版本对比</h3>
+        <div class="report-table">
+          <div v-for="(item, idx) in report.versionCompare" :key="idx" class="report-row">
+            <strong>模型 {{ item.fromVersion + 1 }}.0 → 模型 {{ item.toVersion + 1 }}.0</strong>
+            <span>准确率：{{ (item.accuracy * 100).toFixed(1) }}% | 优化措施：{{ item.plan || "未记录" }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="report.reflection" class="report-section">
+        <h3>十一、实验反思</h3>
+        <p>{{ report.reflection }}</p>
+      </section>
+
+      <section v-if="report.stemSummary" class="report-section">
+        <h3>十二、STEM 总结</h3>
+        <div class="report-table">
+          <div class="report-row"><strong>S 科学探究</strong><span>{{ report.stemSummary.science }}</span></div>
+          <div class="report-row"><strong>T 技术实现</strong><span>{{ report.stemSummary.tech }}</span></div>
+          <div class="report-row"><strong>E 工程优化</strong><span>{{ report.stemSummary.engineering }}</span></div>
+          <div class="report-row"><strong>M 数学分析</strong><span>{{ report.stemSummary.math }}</span></div>
+        </div>
+      </section>
+
       <section class="report-section">
-        <h3>九、实验结论</h3>
+        <h3>十三、实验结论</h3>
         <p>{{ report.conclusion }}</p>
       </section>
     </article>

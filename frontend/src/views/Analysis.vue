@@ -22,6 +22,12 @@ const meta = computed(() => getExperimentMeta(record.value?.experimentId));
 const summary = computed(() => record.value?.summary || {});
 const classMetrics = computed(() => summary.value.classMetrics || []);
 const errorSamples = computed(() => record.value?.errorSamples || []);
+const modelVersion = computed(() => record.value?.modelVersion ?? 0);
+const versionLabel = computed(() => modelVersion.value === 0 ? '模型 1.0' : '模型 2.0');
+const optimizationPlan = computed(() => record.value?.optimizationPlan || '');
+const reflection = computed(() => record.value?.reflection || '');
+const versionCompare = computed(() => record.value?.versionCompare || []);
+const stemSummary = computed(() => record.value?.stemSummary || {});
 const summaryRows = computed(() => [
   { label: "测试准确率", value: formatPercent(summary.value.testAccuracy ?? summary.value.accuracy) },
   { label: "测试样本数", value: safeText(summary.value.testCount ?? summary.value.sampleCount) },
@@ -145,7 +151,40 @@ onMounted(async () => {
         </aside>
       </section>
 
-      <section class="workspace-shell">
+
+          <div v-if="optimizationPlan" class="workspace-shell">
+            <div class="workspace-toolbar"><strong>{{ versionLabel }} 优化方案</strong></div>
+            <div class="workspace-body insight-body">
+              <p>{{ optimizationPlan }}</p>
+            </div>
+          </div>
+
+          <div v-if="reflection" class="workspace-shell">
+            <div class="workspace-toolbar"><strong>实验反思</strong></div>
+            <div class="workspace-body insight-body">
+              <p>{{ reflection }}</p>
+            </div>
+          </div>
+
+          <div v-if="versionCompare.length" class="workspace-shell">
+            <div class="workspace-toolbar"><strong>模型版本对比</strong></div>
+            <div class="workspace-body insight-body">
+              <div v-for="(item, idx) in versionCompare" :key="idx">
+                <span>模型 {{ item.fromVersion + 1 }}.0 → 模型 {{ item.toVersion + 1 }}.0</span>
+                <p>优化措施：{{ item.plan || '未记录' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="stemSummary.science" class="workspace-shell">
+            <div class="workspace-toolbar"><strong>STEM 总结</strong></div>
+            <div class="workspace-body insight-body">
+              <div><span>S 科学探究</span><p>{{ stemSummary.science }}</p></div>
+              <div><span>T 技术实现</span><p>{{ stemSummary.tech }}</p></div>
+              <div><span>E 工程优化</span><p>{{ stemSummary.engineering }}</p></div>
+              <div><span>M 数学分析</span><p>{{ stemSummary.math }}</p></div>
+            </div>
+          </div>      <section class="workspace-shell">
         <div class="workspace-toolbar"><strong>错误样本表</strong></div>
         <div class="workspace-body">
           <el-table v-if="errorSamples.length" :data="errorSamples" stripe style="width: 100%">
@@ -167,6 +206,31 @@ onMounted(async () => {
         </div>
       </section>
     </template>
+      <!-- ?????? -->
+    <section v-if="record.experimentLog && record.experimentLog.length" class="analysis-section">
+      <h3>??????</h3>
+      <div class="log-mini">
+        <div v-for="(entry, i) in record.experimentLog.slice(-8)" :key="i" class="log-mini-entry">
+          <span class="log-mini-time">{{ new Date(entry.time).toLocaleTimeString("zh-CN") }}</span>
+          <span>{{ entry.event }}</span>
+          <span v-if="entry.detail" class="log-mini-detail">- {{ entry.detail }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ??????? -->
+    <section v-if="record.optimizationPlan || record.reflection || record.conclusion" class="analysis-section">
+      <h3>???????</h3>
+      <div v-if="record.optimizationPlan" class="analysis-text-block">
+        <strong>?????</strong>{{ record.optimizationPlan }}
+      </div>
+      <div v-if="record.reflection" class="analysis-text-block">
+        <strong>?????</strong>{{ record.reflection }}
+      </div>
+      <div v-if="record.conclusion" class="analysis-text-block">
+        <strong>?????</strong>{{ record.conclusion }}
+      </div>
+    </section>
   </section>
 </template>
 
@@ -310,4 +374,10 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
+.log-mini { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: var(--surface-alt); border-radius: var(--radius-control); }
+.log-mini-entry { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
+.log-mini-time { color: var(--muted); font-size: 12px; min-width: 70px; }
+.log-mini-detail { color: var(--muted); font-size: 12px; }
+.analysis-text-block { padding: 10px 14px; background: var(--surface-alt); border-radius: var(--radius-control); font-size: 13px; line-height: 1.7; color: var(--text); }
+.analysis-text-block strong { color: var(--heading); display: block; margin-bottom: 4px; }
 </style>

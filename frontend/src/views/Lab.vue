@@ -34,6 +34,19 @@ const realResult = ref(null);
 const editingClassId = ref("");
 const trainedClassIds = ref([]);
 const showBatchDetails = ref(false);
+const modelVersion = ref(0);
+const optimizationPlan = ref("");
+const reflection = ref("");
+const versionHistory = ref([]);
+const showVersionCompare = ref(false);
+const projectName = ref("");
+const groupName = ref("");
+const authorName = ref("");
+const hypothesis = ref("");
+const variableDescription = ref("");
+const datasetNote = ref("");
+const conclusion = ref("");
+const experimentLog = ref([]);
 
 const classMap = ref([]);
 const selectedTrueLabel = ref("");
@@ -662,6 +675,39 @@ async function doBatchTest() {
   }
 }
 
+function logExperimentEvent(event, detail = "") {
+  experimentLog.value.push({
+    time: new Date().toISOString(),
+    event,
+    detail,
+    modelVersion: modelVersion.value
+  });
+}
+
+function switchToNextVersion() {
+  if (modelVersion.value >= 1) return;
+  if (versionHistory.value.length === 0) {
+    versionHistory.value.push({
+      fromVersion: 0,
+      toVersion: 1,
+      accuracy: realResult.value?.summary?.accuracy ?? 0,
+      errorCount: realResult.value?.summary?.errorCount ?? 0,
+      plan: optimizationPlan.value,
+      timestamp: new Date().toISOString()
+    });
+  }
+  modelVersion.value = modelVersion.value + 1;
+  optimizationPlan.value = "";
+  reflection.value = "";
+  conclusion.value = "";
+  showVersionCompare.value = true;
+  logExperimentEvent("switch_version", "?? 1.0 -> ?? 2.0");
+}
+
+function getVersionLabel() {
+  return modelVersion.value === 0 ? "?? 1.0" : "?? 2.0";
+}
+
 async function saveRecord() {
   if (!labData.value) {
     saveError.value = "实验数据尚未加载完成。";
@@ -679,7 +725,15 @@ async function saveRecord() {
       modelVersion: modelVersion.value,
       optimizationPlan: optimizationPlan.value,
       reflection: reflection.value,
-      versionCompare: [...versionHistory.value]
+      versionCompare: [...versionHistory.value],
+      projectName: projectName.value,
+      groupName: groupName.value,
+      authorName: authorName.value,
+      hypothesis: hypothesis.value,
+      variableDescription: variableDescription.value,
+      datasetNote: datasetNote.value,
+      conclusion: conclusion.value,
+      experimentLog: [...experimentLog.value]
     };
     const payload = buildRealRecordPayload(
       labData.value,
@@ -792,7 +846,39 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <main class="lab-workbench">
+            <!-- ?????? -->
+      <section class="project-info-card lab-module">
+        <div class="project-info-grid">
+          <div class="pi-field">
+            <label class="pi-label">????</label>
+            <input v-model="projectName" class="pi-input" placeholder="???????????" />
+          </div>
+          <div class="pi-field">
+            <label class="pi-label">????</label>
+            <input v-model="groupName" class="pi-input" placeholder="???????" />
+          </div>
+          <div class="pi-field">
+            <label class="pi-label">??????</label>
+            <input v-model="authorName" class="pi-input" placeholder="????" />
+          </div>
+        </div>
+        <div class="pi-textareas">
+          <div class="pi-field">
+            <label class="pi-label">????</label>
+            <textarea v-model="hypothesis" class="pi-textarea" rows="2" placeholder="???????????????????"></textarea>
+          </div>
+          <div class="pi-field">
+            <label class="pi-label">????</label>
+            <textarea v-model="variableDescription" class="pi-textarea" rows="2" placeholder="???????????????"></textarea>
+          </div>
+          <div class="pi-field">
+            <label class="pi-label">?????</label>
+            <textarea v-model="datasetNote" class="pi-textarea" rows="2" placeholder="?????????????"></textarea>
+          </div>
+        </div>
+      </section>
+
+<main class="lab-workbench">
         <aside class="panel-card class-panel" :class="{ 'is-emphasis': samplePanelActive }" data-testid="class-panel">
           <div class="panel-head">
             <div>
@@ -1058,6 +1144,40 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="record-box lab-module">
+            <!-- ??????? -->
+            <div class="version-section" v-if="trainState === 'completed'">
+              <div class="version-head">
+                <span class="version-badge" :class="modelVersion === 0 ? 'v1' : 'v2'">{{ getVersionLabel() }}</span>
+                <span v-if="modelVersion === 0" style="color: var(--muted); font-size: 12px;">
+                  ??????? 1.0?????????????????????? 2.0 ??????
+                </span>
+                <el-button v-if="modelVersion === 0" size="small" type="warning" plain @click="switchToNextVersion">
+                  ????? 2.0
+                </el-button>
+                <span v-else style="color: var(--success); font-size: 12px; font-weight: 700;">
+                  ?? 2.0 ?????
+                </span>
+              </div>
+              <div class="opt-field">
+                <label class="opt-label">??????? 1.0 ? 2.0?</label>
+                <textarea v-model="optimizationPlan" class="opt-textarea" rows="2" placeholder="???????????"></textarea>
+              </div>
+              <div class="opt-field">
+                <label class="opt-label">????</label>
+                <textarea v-model="reflection" class="opt-textarea" rows="2" placeholder="???????????????"></textarea>
+              </div>
+              <div class="opt-field">
+                <label class="opt-label">????</label>
+                <textarea v-model="conclusion" class="opt-textarea" rows="2" placeholder="?????????????"></textarea>
+              </div>
+              <div v-if="showVersionCompare && versionHistory.length" class="version-compare">
+                <strong>??????</strong>
+                <div class="compare-row" v-for="(vh, i) in versionHistory" :key="i">
+                  ?? {{ vh.fromVersion + 1 }}.0 ? ?? {{ vh.toVersion + 1 }}.0???? {{ (vh.accuracy * 100).toFixed(1) }}%??? {{ vh.errorCount }} ?????{{ vh.plan || '???' }}
+                </div>
+              </div>
+            </div>
+
             <strong>保存记录与跳转</strong>
             <p>{{ experimentSummaryText }}</p>
             <div v-if="trainState === 'completed'" class="model-save-status">
@@ -1088,7 +1208,19 @@ onBeforeUnmount(() => {
             <el-alert v-if="modelSaveError" :title="modelSaveError" type="error" :closable="false" show-icon />
             <el-alert v-if="modelExportError" :title="modelExportError" type="error" :closable="false" show-icon />
             <div class="record-actions">
-              <el-button type="primary" data-testid="save-record" :loading="saving" @click="saveRecord">保存实验记录</el-button>
+                            <!-- ?????? -->
+              <details v-if="experimentLog.length" class="experiment-log-details">
+                <summary>???????{{ experimentLog.length }} ??</summary>
+                <div class="log-timeline">
+                  <div v-for="(entry, i) in experimentLog" :key="i" class="log-entry">
+                    <span class="log-time">{{ new Date(entry.time).toLocaleTimeString("zh-CN") }}</span>
+                    <span class="log-event">{{ entry.event }}</span>
+                    <span v-if="entry.detail" class="log-detail">{{ entry.detail }}</span>
+                  </div>
+                </div>
+              </details>
+
+<el-button type="primary" data-testid="save-record" :loading="saving" @click="saveRecord">保存实验记录</el-button>
               <el-button plain @click="router.push('/records')">查看实验记录</el-button>
               <el-button v-if="savedRecordId" plain @click="router.push(`/report/${savedRecordId}`)">查看实验报告</el-button>
             </div>
@@ -1840,5 +1972,28 @@ onBeforeUnmount(() => {
   .lab-workbench {
     grid-template-columns: 1fr;
   }
+}
+/* Project info card */
+.project-info-card { padding: 16px 20px; }
+.project-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.pi-field { display: flex; flex-direction: column; gap: 4px; }
+.pi-label { font-size: 12px; font-weight: 800; color: var(--muted); }
+.pi-input { min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: #fff; color: var(--text); font-size: 13px; outline: none; }
+.pi-input:focus { border-color: var(--border-active); }
+.pi-textareas { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.pi-textarea { width: 100%; min-height: 52px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: #fff; color: var(--text); font-size: 13px; line-height: 1.6; resize: vertical; outline: none; }
+.pi-textarea:focus { border-color: var(--border-active); }
+
+/* Experiment log */
+.experiment-log-details { margin-bottom: 12px; }
+.experiment-log-details summary { cursor: pointer; padding: 8px 0; font-size: 13px; font-weight: 800; color: var(--muted); }
+.log-timeline { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.log-entry { display: flex; gap: 10px; align-items: baseline; font-size: 12px; }
+.log-time { color: var(--muted); min-width: 70px; }
+.log-event { font-weight: 700; color: var(--heading); }
+.log-detail { color: var(--muted); }
+
+@media (max-width: 768px) {
+  .project-info-grid { grid-template-columns: 1fr; }
 }
 </style>
