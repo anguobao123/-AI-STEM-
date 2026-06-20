@@ -19,6 +19,18 @@ const sourceInfo = ref({
 
 const analysisPath = computed(() => `/analysis/${route.params.recordId}`);
 
+function formatModelVersionLabel(version, fallback = "优化后模型") {
+  const value = Number(version);
+  if (Number.isNaN(value)) return fallback;
+  if (value <= 0) return "模型 1.0";
+  if (value === 1) return "模型 2.0";
+  return "优化后模型";
+}
+
+function formatVersionCompareTitle(item = {}) {
+  return `${formatModelVersionLabel(item.fromVersion, "模型 1.0")} → ${formatModelVersionLabel(item.toVersion, "优化后模型")}`;
+}
+
 const reportPlainText = computed(() => {
   if (!report.value) return "";
 
@@ -68,7 +80,7 @@ const reportPlainText = computed(() => {
     "十、模型版本对比",
     ...(report.value.versionCompare && report.value.versionCompare.length
       ? report.value.versionCompare.map(
-          (item) => "模型 " + (item.fromVersion + 1) + ".0 → 模型 " + (item.toVersion + 1) + ".0：" + (item.plan || "未记录")
+          (item) => formatVersionCompareTitle(item) + "：" + (item.plan || "未记录")
         )
       : ["暂无版本对比数据"]),
     "",
@@ -282,7 +294,7 @@ function printReport() {
         <h3>十、模型版本对比</h3>
         <div class="report-table">
           <div v-for="(item, idx) in report.versionCompare" :key="idx" class="report-row">
-            <strong>模型 {{ item.fromVersion + 1 }}.0 → 模型 {{ item.toVersion + 1 }}.0</strong>
+            <strong>{{ formatVersionCompareTitle(item) }}</strong>
             <span>准确率：{{ (item.accuracy * 100).toFixed(1) }}% | 优化措施：{{ item.plan || "未记录" }}</span>
           </div>
         </div>

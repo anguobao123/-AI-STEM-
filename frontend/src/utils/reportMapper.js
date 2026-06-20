@@ -16,8 +16,8 @@ export function mapRecordToReport(record) {
   const classCount = summary.classCount ?? record.datasetSummary?.classCount ?? "-";
   const createdAt = formatDateTime(record.createdAt || record.updatedAt || new Date().toISOString());
 
-  const modelVersion = record.modelVersion ?? 0;
-  const versionLabel = modelVersion === 0 ? "模型 1.0" : "模型 2.0";
+  const modelVersion = Number(record.modelVersion ?? 0);
+  const versionLabel = formatModelVersionLabel(modelVersion, "模型 1.0");
   return {
     id: record.recordId,
     code: `EXP-${String(record.recordId).padStart(4, "0")}`,
@@ -79,12 +79,20 @@ export function mapRecordToReport(record) {
     conclusion: record.conclusion || buildConclusion(meta, testAccuracy, errorSamples.length),
     experimentLog: record.experimentLog || [],
     stemSummaryText: record.stemSummary
-      ? ["S ?????" + (record.stemSummary.science || ""),
-         "T ?????" + (record.stemSummary.tech || ""),
-         "E ?????" + (record.stemSummary.engineering || ""),
-         "M ?????" + (record.stemSummary.math || "")]
+      ? ["S 科学探究：" + (record.stemSummary.science || ""),
+         "T 技术实现：" + (record.stemSummary.tech || ""),
+         "E 工程优化：" + (record.stemSummary.engineering || ""),
+         "M 数学分析：" + (record.stemSummary.math || "")]
       : []
   };
+}
+
+function formatModelVersionLabel(version, fallback = "优化后模型") {
+  const value = Number(version);
+  if (Number.isNaN(value)) return fallback;
+  if (value <= 0) return "模型 1.0";
+  if (value === 1) return "模型 2.0";
+  return "优化后模型";
 }
 
 function buildProcess(meta) {

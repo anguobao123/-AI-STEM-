@@ -14,7 +14,19 @@ const error = ref("");
 const deletingId = ref(null);
 const exportingModelId = ref(null);
 const editingId = ref(null);
-const editForm = ref({ projectName: "", groupName: "", authorName: "", conclusion: "" });
+const editableTextFields = [
+  { key: "projectName", label: "项目名称", type: "input" },
+  { key: "groupName", label: "小组名称", type: "input" },
+  { key: "authorName", label: "作者署名", type: "input" },
+  { key: "objective", label: "实验目标", type: "textarea" },
+  { key: "hypothesis", label: "实验假设", type: "textarea" },
+  { key: "variableDescription", label: "变量说明", type: "textarea" },
+  { key: "datasetNote", label: "数据集说明", type: "textarea" },
+  { key: "optimizationPlan", label: "优化方案", type: "textarea" },
+  { key: "conclusion", label: "实验结论", type: "textarea" },
+  { key: "reflection", label: "实验反思", type: "textarea" }
+];
+const editForm = ref(Object.fromEntries(editableTextFields.map((field) => [field.key, ""])));
 
 const showEditDialog = computed({
   get: () => !!editingId.value,
@@ -38,7 +50,7 @@ const filteredItems = computed(() => {
   return items.value.filter((item) => {
     const meta = getExperimentMeta(item.experimentId);
     const matchesExperiment = !experimentFilter.value || item.experimentId === experimentFilter.value;
-    const matchesKeyword = !text || `${item.title} ${meta.title} ${item.recordId}`.toLowerCase().includes(text);
+    const matchesKeyword = !text || `${item.title} ${item.projectName || ""} ${item.groupName || ""} ${item.authorName || ""} ${meta.title} ${item.recordId}`.toLowerCase().includes(text);
     return matchesExperiment && matchesKeyword;
   });
 });
@@ -57,23 +69,20 @@ async function loadRecords() {
 
 function startEdit(record) {
   editingId.value = record.recordId;
-  editForm.value = {
-    projectName: record.projectName || "",
-    groupName: record.groupName || "",
-    authorName: record.authorName || "",
-    conclusion: record.conclusion || ""
-  };
+  editForm.value = Object.fromEntries(
+    editableTextFields.map((field) => [field.key, record[field.key] || ""])
+  );
 }
 
 async function saveEdit() {
   if (!editingId.value) return;
   try {
     await updateRecord(editingId.value, editForm.value);
-    ElMessage.success("?????");
+    ElMessage.success("记录已更新");
     editingId.value = null;
     await loadRecords();
   } catch (err) {
-    ElMessage.error(err.message || "????");
+    ElMessage.error(err.message || "保存编辑失败");
   }
 }
 
@@ -175,6 +184,7 @@ onMounted(loadRecords);
               <strong>{{ row.projectName || row.title }}</strong>
               <small v-if="row.groupName || row.authorName">{{ row.groupName }}{{ row.authorName ? ' / ' + row.authorName : '' }}</small>
               <small>{{ getExperimentMeta(row.experimentId).title }}</small>
+              <small v-if="row.experimentLog && row.experimentLog.length">有实验过程记录</small>
             </div>
             <span data-label="准确率">{{ formatPercent(row.accuracy) }}</span>
             <span data-label="样本数">{{ safeText(row.sampleCount) }}</span>
@@ -189,6 +199,7 @@ onMounted(loadRecords);
             <div class="record-actions" data-label="操作">
               <el-button @click="router.push(`/analysis/${row.recordId}`)">查看分析</el-button>
               <el-button type="primary" plain @click="router.push(`/report/${row.recordId}`)">查看报告</el-button>
+              <el-button plain @click="startEdit(row)">编辑记录</el-button>
               <el-button
                 plain
                 :disabled="!row.hasLocalModel"
@@ -205,28 +216,17 @@ onMounted(loadRecords);
     </section>
   
     <!-- Edit Dialog -->
-    <el-dialog v-model="showEditDialog" title="??????" width="500px" @close="cancelEdit">
+    <el-dialog v-model="showEditDialog" title="编辑实验记录" width="640px" @close="cancelEdit">
       <div class="edit-form" v-if="editingId">
-        <div class="edit-field">
-          <label>????</label>
-          <input v-model="editForm.projectName" class="filter-input" style="width:100%" />
-        </div>
-        <div class="edit-field">
-          <label>????</label>
-          <input v-model="editForm.groupName" class="filter-input" style="width:100%" />
-        </div>
-        <div class="edit-field">
-          <label>??????</label>
-          <input v-model="editForm.authorName" class="filter-input" style="width:100%" />
-        </div>
-        <div class="edit-field">
-          <label>????</label>
-          <textarea v-model="editForm.conclusion" class="filter-input" style="width:100%;min-height:80px"></textarea>
+        <div v-for="field in editableTextFields" :key="field.key" class="edit-field">
+          <label>{{ field.label }}</label>
+          <input v-if="field.type === 'input'" v-model="editForm[field.key]" class="filter-input" style="width:100%" />
+          <textarea v-else v-model="editForm[field.key]" class="filter-input edit-textarea"></textarea>
         </div>
       </div>
       <template #footer>
-        <el-button @click="cancelEdit">??</el-button>
-        <el-button type="primary" @click="saveEdit">??</el-button>
+        <el-button @click="cancelEdit">取消</el-button>
+        <el-button type="primary" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
   </section>

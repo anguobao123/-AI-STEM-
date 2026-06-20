@@ -4,8 +4,8 @@ import { computed, ref } from "vue";
 const mustReadSections = [
   {
     key: "concept",
-    title: "概念",
-    subtitle: "先知道模型在判断什么。",
+    title: "AI 为什么会认错",
+    subtitle: "先理解模型在判断什么，为什么数据是关键。",
     points: [
       "图像分类的输入是图片，输出是类别和置信度。",
       "样本必须有正确标签，标签错了会直接影响训练。",
@@ -15,19 +15,19 @@ const mustReadSections = [
   },
   {
     key: "variable",
-    title: "变量控制",
-    subtitle: "一次实验只改一个因素。",
+    title: "数据如何影响 AI",
+    subtitle: "在本课程中，我们重点探究三个因素。",
     points: [
-      "只改变本次实验的关键变量。",
-      "样本数量、训练轮次、类别相似度、数据增强分别对应四个实验。",
-      "其他条件尽量保持一致，结果才容易解释。"
+      "数据数量：每类训练图片多还是少，会影响模型稳定性。",
+      "数据质量：类别区分度、背景干扰，会影响模型准确性。",
+      "训练方式：训练轮次、数据增强，会影响模型泛化能力。"
     ],
     tip: "选定实验后，只围绕该实验的控制变量做调整。"
   },
   {
     key: "train-test",
-    title: "训练测试",
-    subtitle: "先训练，再用新图片检验。",
+    title: "训练与测试",
+    subtitle: "先训练模型 1.0，然后用新图片检验。",
     points: [
       "训练时观察准确率和损失值是否稳定变化。",
       "单图预测看某一张图的类别和概率。",
@@ -37,18 +37,19 @@ const mustReadSections = [
   },
   {
     key: "analysis",
-    title: "结果分析",
-    subtitle: "用数据说明实验结论。",
+    title: "结果分析与优化",
+    subtitle: "基于错误分析，优化数据，训练模型 2.0。",
     points: [
-      "准确率回答“整体分类效果好不好”。",
-      "混淆矩阵回答“哪些类别容易混淆”。",
-      "错误样本帮助判断数据是否需要补充或调整。"
+      "准确率回答：整体分类效果好不好。",
+      "混淆矩阵回答：哪些类别容易混淆。",
+      "错误样本帮助判断数据是否需要补充或调整。",
+      "优化后重新训练，对比模型 1.0 和模型 2.0。"
     ],
     tip: "写结论时引用指标和错误现象，不只写主观感觉。"
   }
 ];
 
-const preflightChecks = ["类别名称清楚", "训练图和测试图分开", "只改变一个变量", "保存记录后再分析"];
+const preflightChecks = ["类别名称清晰", "训练图和测试图分开", "只改变一个变量", "优化后对比 1.0 与 2.0", "保存记录后再分析"];
 const activeKey = ref("concept");
 const activeSection = computed(() => mustReadSections.find((section) => section.key === activeKey.value) || mustReadSections[0]);
 </script>
@@ -57,11 +58,13 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
   <section class="guide-page page-layout">
     <header class="page-heading">
       <div class="page-heading__copy">
-        <span class="guide-kicker">实验前清单 + 分段阅读</span>
+        <span class="guide-kicker">数据如何教会 AI · 课程导学</span>
         <h1 class="page-title">先读懂四件事，再开始图像分类实验</h1>
       </div>
       <p class="page-subtitle">
-        左侧选择导学段落，右侧只看当前必读内容；每部分保留 3 条要点和 1 条进入实验提醒。
+        左侧选择导学段落，右侧只看当前必读内容。
+        实验前请完成以下确认：
+        <span v-for="check in preflightChecks" :key="check" class="preflight-chip">{{ check }}</span>
       </p>
     </header>
 
@@ -88,10 +91,8 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
         <main class="workspace-main reading-panel">
           <div class="workspace-toolbar">
             <div>
-              <span class="guide-kicker">当前阅读</span>
               <h2 class="section-title">{{ activeSection.title }}</h2>
             </div>
-            <span class="reading-count status-badge is-muted">3 条要点</span>
           </div>
 
           <div class="workspace-body reading-body">
@@ -100,7 +101,7 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
               <li v-for="point in activeSection.points" :key="point">{{ point }}</li>
             </ol>
             <div class="attention-line lab-module is-active">
-              <strong>进入实验时要注意</strong>
+              <strong>进入实验时需要注意</strong>
               <p>{{ activeSection.tip }}</p>
             </div>
           </div>
@@ -108,12 +109,8 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
       </div>
 
       <div class="bottom-actions guide-bottom">
-        <div class="preflight">
-          <strong>开始前确认</strong>
-          <span v-for="check in preflightChecks" :key="check" class="preflight-chip status-badge is-muted">{{ check }}</span>
-        </div>
         <router-link to="/experiments" class="guide-action">
-          <el-button type="primary" size="large">我已读完，去选择实验</el-button>
+          <el-button type="primary" size="large">我读完了，去选择实验任务</el-button>
         </router-link>
       </div>
     </section>
@@ -124,11 +121,11 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
 .guide-kicker {
   color: var(--primary);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .guide-workspace .workspace-split {
-  min-height: 480px;
+  min-height: 460px;
 }
 
 .guide-nav {
@@ -152,19 +149,14 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
 
 .guide-nav__item {
   width: 100%;
-  padding: 14px 14px;
+  padding: 14px;
   color: var(--text);
   text-align: left;
   display: grid;
   gap: 4px;
   cursor: pointer;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .guide-nav__item:hover,
@@ -206,10 +198,6 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
   grid-template-rows: auto 1fr;
 }
 
-.reading-count {
-  min-height: 32px;
-}
-
 .reading-body {
   display: grid;
   align-content: start;
@@ -238,10 +226,7 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   color: var(--text);
   line-height: 1.65;
-  transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    transform 0.16s ease;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
 .reading-list li:hover {
@@ -266,41 +251,29 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
 }
 
 .guide-bottom {
-  justify-content: space-between;
-}
-
-.preflight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.preflight strong {
-  color: var(--heading);
+  justify-content: center;
 }
 
 .preflight-chip {
-  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-alt);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guide-action {
+  text-decoration: none;
 }
 
 @media (max-width: 900px) {
   .guide-nav {
     position: static;
-  }
-
-  .guide-bottom,
-  .preflight {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .guide-action {
-    width: 100%;
-  }
-
-  .guide-action :deep(.el-button) {
-    width: 100%;
   }
 }
 </style>

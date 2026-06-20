@@ -11,6 +11,14 @@ const loading = ref(true);
 const error = ref("");
 const records = ref([]);
 
+function formatModelVersionLabel(version) {
+  const value = Number(version);
+  if (Number.isNaN(value)) return "优化后模型";
+  if (value <= 0) return "模型 1.0";
+  if (value === 1) return "模型 2.0";
+  return "优化后模型";
+}
+
 const stats = computed(() => {
   const items = records.value;
   if (items.length === 0) {
@@ -47,7 +55,8 @@ const realAchievements = computed(() =>
     const displayGroup = item.groupName || "";
     const displayAuthor = item.authorName || "";
     const classNames = item.classNames || [];
-    const hasV2 = item.hasVersionCompare || (item.modelVersion && item.modelVersion >= 2);
+    const numericModelVersion = Number(item.modelVersion || 0);
+    const hasV2 = item.hasVersionCompare || numericModelVersion >= 1;
     const planText = item.optimizationPlan || "";
     const reflectText = item.reflection || "";
     const stemData = item.stemSummary || {};
@@ -60,7 +69,8 @@ const realAchievements = computed(() =>
       title: displayTitle,
       experimentName: meta.shortName || meta.title,
       objective: item.objective || meta.objective || "",
-      modelVersion: item.modelVersion || 0,
+      modelVersion: Number.isNaN(numericModelVersion) ? 0 : numericModelVersion,
+      modelVersionLabel: formatModelVersionLabel(numericModelVersion),
       accuracy: item.accuracy,
       testTotal: item.sampleCount || 0,
       errorCount: item.errorCount,
@@ -75,7 +85,8 @@ const realAchievements = computed(() =>
       reportPath: `/report/${item.recordId}`,
       displayGroup,
       displayAuthor,
-      conclusion: item.conclusion || "" 
+      conclusion: item.conclusion || "",
+      hasExperimentLog: Boolean(item.experimentLog && item.experimentLog.length)
     };
   })
 );
@@ -198,7 +209,7 @@ onMounted(async () => {
               <div class="card-details">
                 <div class="card-detail" v-if="item.modelVersion > 0">
                   <span class="detail-label">模型版本</span>
-                  <el-tag size="small" type="warning">v{{ item.modelVersion }}</el-tag>
+                  <el-tag size="small" type="warning">{{ item.modelVersionLabel }}</el-tag>
                 </div>
                 <div class="card-detail" v-if="item.hasVersionCompare">
                   <span class="detail-label">版本对比</span>
@@ -207,6 +218,10 @@ onMounted(async () => {
                 <div class="card-detail" v-if="item.classNames.length > 0">
                   <span class="detail-label">分类任务</span>
                   <span class="detail-text">{{ item.classNames.join(" / ") }}</span>
+                </div>
+                <div class="card-detail" v-if="item.hasExperimentLog">
+                  <span class="detail-label">实验留痕</span>
+                  <el-tag size="small" type="success">有实验过程记录</el-tag>
                 </div>
               </div>
 
@@ -234,7 +249,7 @@ onMounted(async () => {
             </div>
 
             <div class="card-excerpt" v-if="item.conclusion">
-                <span class="excerpt-label">????</span>
+                <span class="excerpt-label">实验结论</span>
                 <p class="excerpt-text">{{ item.conclusion.length > 100 ? item.conclusion.slice(0, 100) + "..." : item.conclusion }}</p>
               </div>
               <div class="card-footer">
@@ -290,7 +305,7 @@ onMounted(async () => {
             </div>
 
             <div class="card-excerpt" v-if="item.conclusion">
-                <span class="excerpt-label">????</span>
+                <span class="excerpt-label">实验结论</span>
                 <p class="excerpt-text">{{ item.conclusion.length > 100 ? item.conclusion.slice(0, 100) + "..." : item.conclusion }}</p>
               </div>
               <div class="card-footer">

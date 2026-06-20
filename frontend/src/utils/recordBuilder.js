@@ -147,7 +147,7 @@ export function buildRealRecordPayload(
     datasetNote: courseFields.datasetNote ?? "",
     conclusion: courseFields.conclusion ?? "",
     experimentLog: courseFields.experimentLog ?? [],
-    objective: labData.objective,
+    objective: courseFields.objective ?? labData.objective,
     status: "completed",
     datasetSummary: trainingResult.datasetSummary,
     trainConfig: {

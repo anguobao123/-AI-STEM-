@@ -42,6 +42,7 @@ const showVersionCompare = ref(false);
 const projectName = ref("");
 const groupName = ref("");
 const authorName = ref("");
+const objective = ref("");
 const hypothesis = ref("");
 const variableDescription = ref("");
 const datasetNote = ref("");
@@ -372,6 +373,9 @@ function handleClassFiles(index, event) {
   trainedClassIds.value = [];
   batchTestMap.value = [];
   batchTestResult.value = null;
+  if (incoming.length) {
+    logExperimentEvent("upload_train_images", `${current.name || "未命名类别"}：${incoming.length} 张训练图片`);
+  }
 }
 
 function removeClassImage(classIndex, imageId) {
@@ -396,6 +400,7 @@ function handleTestFile(event) {
   testFile.value = file;
   if (file) {
     testPreviewUrl.value = URL.createObjectURL(file);
+    logExperimentEvent("upload_test_images", `上传单张测试图片：${file.name}`);
   }
 }
 
@@ -408,6 +413,9 @@ function handleBatchFiles(index, event) {
     .map(createFileEntry);
   batchTestResult.value = null;
   batchTestError.value = "";
+  if (current.files.length) {
+    logExperimentEvent("upload_test_images", `${current.name}：${current.files.length} 张批量测试图片`);
+  }
   event.target.value = "";
 }
 
@@ -428,10 +436,12 @@ function updateCorrectState() {
 
 function updateEpoch(delta) {
   form.value.epochs = Math.min(50, Math.max(1, Number(form.value.epochs || 1) + delta));
+  logTrainConfigChange();
 }
 
 function updateBatchSize(delta) {
   form.value.batchSize = Math.min(32, Math.max(1, Number(form.value.batchSize || 1) + delta));
+  logTrainConfigChange();
 }
 
 function resetTrainConfig() {
@@ -441,6 +451,14 @@ function resetTrainConfig() {
     learningRate: meta.value.defaultParams?.learningRate || 0.001,
     imageSize: labData.value?.trainConfig?.imageSize || 64
   };
+  logTrainConfigChange("恢复默认训练参数");
+}
+
+function logTrainConfigChange(detail = "") {
+  logExperimentEvent(
+    "update_train_config",
+    detail || `epochs=${form.value.epochs}，batchSize=${form.value.batchSize}，learningRate=${form.value.learningRate}`
+  );
 }
 
 function createModelKey() {
@@ -569,6 +587,7 @@ async function startRealTraining() {
   }
 
   trainState.value = "running";
+  logExperimentEvent("train_start", `开始训练${getVersionLabel()}`);
   const trainingEntries = activeClassEntries.value.map((item) => ({
     className: item.name,
     files: item.files
@@ -599,6 +618,7 @@ async function startRealTraining() {
     syncBatchEntries(trainedClassIds.value);
     trainProgress.value = 100;
     trainState.value = "completed";
+    logExperimentEvent("train_completed", `${getVersionLabel()}训练完成，准确率 ${formatPercent(result.summary?.accuracy)}`);
   } catch (e) {
     trainState.value = "failed";
     trainError.value = e.message || "真实训练失败。";
@@ -668,6 +688,7 @@ async function doBatchTest() {
       })),
       imageSize: realResult.value?.trainConfig?.imageSize || 64
     });
+    logExperimentEvent("batch_test", `${getVersionLabel()}批量测试：${batchSummaryText.value}`);
   } catch (e) {
     batchTestError.value = e.message || "批量测试失败。";
   } finally {
@@ -675,12 +696,30 @@ async function doBatchTest() {
   }
 }
 
+const experimentActionLabels = {
+  enter_lab: "创建或进入实验任务",
+  update_project_info: "填写或修改项目信息",
+  upload_train_images: "上传训练图片",
+  upload_test_images: "上传测试图片",
+  update_train_config: "修改训练参数",
+  train_start: "开始训练模型",
+  train_completed: "完成训练模型",
+  batch_test: "执行批量测试",
+  write_optimization_plan: "填写优化方案",
+  write_conclusion: "填写实验结论",
+  write_reflection: "填写实验反思",
+  save_record: "保存实验记录",
+  switch_version: "切换模型版本"
+};
+
 function logExperimentEvent(event, detail = "") {
   experimentLog.value.push({
     time: new Date().toISOString(),
     event,
+    action: experimentActionLabels[event] || event,
     detail,
-    modelVersion: modelVersion.value
+    modelVersion: modelVersion.value,
+    step: getVersionLabel()
   });
 }
 
@@ -701,11 +740,11 @@ function switchToNextVersion() {
   reflection.value = "";
   conclusion.value = "";
   showVersionCompare.value = true;
-  logExperimentEvent("switch_version", "?? 1.0 -> ?? 2.0");
+  logExperimentEvent("switch_version", "模型 1.0 -> 模型 2.0");
 }
 
 function getVersionLabel() {
-  return modelVersion.value === 0 ? "?? 1.0" : "?? 2.0";
+  return modelVersion.value === 0 ? "模型 1.0" : "模型 2.0";
 }
 
 async function saveRecord() {
@@ -729,11 +768,64 @@ async function saveRecord() {
       projectName: projectName.value,
       groupName: groupName.value,
       authorName: authorName.value,
+      objective: objective.value,
       hypothesis: hypothesis.value,
       variableDescription: variableDescription.value,
       datasetNote: datasetNote.value,
       conclusion: conclusion.value,
-      experimentLog: [...experimentLog.value]
+      experimentLog: [
+        ...experimentLog.value,
+        ...[
+          projectName.value || groupName.value || authorName.value || objective.value || hypothesis.value || variableDescription.value || datasetNote.value
+            ? {
+                time: new Date().toISOString(),
+                event: "update_project_info",
+                action: experimentActionLabels.update_project_info,
+                detail: "保存时记录项目名称、小组署名、实验目标、假设、变量和数据集说明",
+                modelVersion: modelVersion.value,
+                step: getVersionLabel()
+              }
+            : null,
+          optimizationPlan.value
+            ? {
+                time: new Date().toISOString(),
+                event: "write_optimization_plan",
+                action: experimentActionLabels.write_optimization_plan,
+                detail: "保存时记录优化方案",
+                modelVersion: modelVersion.value,
+                step: getVersionLabel()
+              }
+            : null,
+          conclusion.value
+            ? {
+                time: new Date().toISOString(),
+                event: "write_conclusion",
+                action: experimentActionLabels.write_conclusion,
+                detail: "保存时记录实验结论",
+                modelVersion: modelVersion.value,
+                step: getVersionLabel()
+              }
+            : null,
+          reflection.value
+            ? {
+                time: new Date().toISOString(),
+                event: "write_reflection",
+                action: experimentActionLabels.write_reflection,
+                detail: "保存时记录实验反思",
+                modelVersion: modelVersion.value,
+                step: getVersionLabel()
+              }
+            : null,
+          {
+            time: new Date().toISOString(),
+            event: "save_record",
+            action: experimentActionLabels.save_record,
+            detail: "保存实验记录",
+            modelVersion: modelVersion.value,
+            step: getVersionLabel()
+          }
+        ].filter(Boolean)
+      ]
     };
     const payload = buildRealRecordPayload(
       labData.value,
@@ -778,6 +870,7 @@ async function loadExperiment(experimentId) {
       title: meta.value.title,
       objective: meta.value.resultHint || meta.value.title
     };
+    objective.value = labData.value.objective;
 
     form.value = {
       epochs: meta.value.defaultParams?.epochs || 20,
@@ -787,6 +880,16 @@ async function loadExperiment(experimentId) {
     };
 
     classMap.value = defaultClassNamesForExperiment(experimentId).map((name) => createClassItem(name));
+    experimentLog.value = [
+      {
+        time: new Date().toISOString(),
+        event: "enter_lab",
+        action: experimentActionLabels.enter_lab,
+        detail: meta.value.title,
+        modelVersion: modelVersion.value,
+        step: getVersionLabel()
+      }
+    ];
   } catch (e) {
     error.value = e.message || "实验工作台加载失败。";
   } finally {
@@ -846,34 +949,38 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-            <!-- ?????? -->
+      <!-- 项目信息 -->
       <section class="project-info-card lab-module">
         <div class="project-info-grid">
           <div class="pi-field">
-            <label class="pi-label">????</label>
-            <input v-model="projectName" class="pi-input" placeholder="???????????" />
+            <label class="pi-label">项目名称</label>
+            <input v-model="projectName" class="pi-input" placeholder="例如：水果分类模型优化实验" />
           </div>
           <div class="pi-field">
-            <label class="pi-label">????</label>
-            <input v-model="groupName" class="pi-input" placeholder="???????" />
+            <label class="pi-label">小组名称</label>
+            <input v-model="groupName" class="pi-input" placeholder="例如：第三小组" />
           </div>
           <div class="pi-field">
-            <label class="pi-label">??????</label>
-            <input v-model="authorName" class="pi-input" placeholder="????" />
+            <label class="pi-label">作者署名</label>
+            <input v-model="authorName" class="pi-input" placeholder="可选，填写昵称或成员简称" />
           </div>
         </div>
         <div class="pi-textareas">
           <div class="pi-field">
-            <label class="pi-label">????</label>
-            <textarea v-model="hypothesis" class="pi-textarea" rows="2" placeholder="???????????????????"></textarea>
+            <label class="pi-label">实验目标</label>
+            <textarea v-model="objective" class="pi-textarea" rows="2" placeholder="说明本次实验想研究什么问题"></textarea>
           </div>
           <div class="pi-field">
-            <label class="pi-label">????</label>
-            <textarea v-model="variableDescription" class="pi-textarea" rows="2" placeholder="???????????????"></textarea>
+            <label class="pi-label">实验假设</label>
+            <textarea v-model="hypothesis" class="pi-textarea" rows="2" placeholder="例如：每类训练样本数量增加后，模型准确率会提高"></textarea>
           </div>
           <div class="pi-field">
-            <label class="pi-label">?????</label>
-            <textarea v-model="datasetNote" class="pi-textarea" rows="2" placeholder="?????????????"></textarea>
+            <label class="pi-label">变量说明</label>
+            <textarea v-model="variableDescription" class="pi-textarea" rows="2" placeholder="说明本次实验改变什么变量，保持哪些条件不变"></textarea>
+          </div>
+          <div class="pi-field">
+            <label class="pi-label">数据集说明</label>
+            <textarea v-model="datasetNote" class="pi-textarea" rows="2" placeholder="说明训练集、测试集、图片类别和样本来源"></textarea>
           </div>
         </div>
       </section>
@@ -992,7 +1099,7 @@ onBeforeUnmount(() => {
             </div>
             <label class="param-row lab-module">
               <span>学习率</span>
-              <input v-model.number="form.learningRate" class="param-input" type="number" min="0.0001" step="0.0001" />
+              <input v-model.number="form.learningRate" class="param-input" type="number" min="0.0001" step="0.0001" @change="logTrainConfigChange()" />
             </label>
             <div class="param-row lab-module">
               <span>图片尺寸</span>
@@ -1144,36 +1251,36 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="record-box lab-module">
-            <!-- ??????? -->
+            <!-- 模型版本与实验记录 -->
             <div class="version-section" v-if="trainState === 'completed'">
               <div class="version-head">
                 <span class="version-badge" :class="modelVersion === 0 ? 'v1' : 'v2'">{{ getVersionLabel() }}</span>
                 <span v-if="modelVersion === 0" style="color: var(--muted); font-size: 12px;">
-                  ??????? 1.0?????????????????????? 2.0 ??????
+                  当前为模型 1.0，可先记录优化方案，再切换到模型 2.0 继续实验
                 </span>
                 <el-button v-if="modelVersion === 0" size="small" type="warning" plain @click="switchToNextVersion">
-                  ????? 2.0
+                  切换到模型 2.0
                 </el-button>
                 <span v-else style="color: var(--success); font-size: 12px; font-weight: 700;">
-                  ?? 2.0 ?????
+                  模型 2.0 实验中
                 </span>
               </div>
               <div class="opt-field">
-                <label class="opt-label">??????? 1.0 ? 2.0?</label>
-                <textarea v-model="optimizationPlan" class="opt-textarea" rows="2" placeholder="???????????"></textarea>
+                <label class="opt-label">优化方案</label>
+                <textarea v-model="optimizationPlan" class="opt-textarea" rows="2" placeholder="说明模型 1.0 暴露的问题，以及准备如何优化"></textarea>
               </div>
               <div class="opt-field">
-                <label class="opt-label">????</label>
-                <textarea v-model="reflection" class="opt-textarea" rows="2" placeholder="???????????????"></textarea>
+                <label class="opt-label">实验反思</label>
+                <textarea v-model="reflection" class="opt-textarea" rows="2" placeholder="说明如果继续优化，还会怎么改进"></textarea>
               </div>
               <div class="opt-field">
-                <label class="opt-label">????</label>
-                <textarea v-model="conclusion" class="opt-textarea" rows="2" placeholder="?????????????"></textarea>
+                <label class="opt-label">实验结论</label>
+                <textarea v-model="conclusion" class="opt-textarea" rows="2" placeholder="根据测试结果说明实验结论"></textarea>
               </div>
               <div v-if="showVersionCompare && versionHistory.length" class="version-compare">
-                <strong>??????</strong>
+                <strong>模型版本对比</strong>
                 <div class="compare-row" v-for="(vh, i) in versionHistory" :key="i">
-                  ?? {{ vh.fromVersion + 1 }}.0 ? ?? {{ vh.toVersion + 1 }}.0???? {{ (vh.accuracy * 100).toFixed(1) }}%??? {{ vh.errorCount }} ?????{{ vh.plan || '???' }}
+                  模型 {{ vh.fromVersion + 1 }}.0 → 模型 {{ vh.toVersion + 1 }}.0：准确率 {{ (vh.accuracy * 100).toFixed(1) }}%，错误 {{ vh.errorCount }} 个，优化：{{ vh.plan || '未记录' }}
                 </div>
               </div>
             </div>
@@ -1208,13 +1315,13 @@ onBeforeUnmount(() => {
             <el-alert v-if="modelSaveError" :title="modelSaveError" type="error" :closable="false" show-icon />
             <el-alert v-if="modelExportError" :title="modelExportError" type="error" :closable="false" show-icon />
             <div class="record-actions">
-                            <!-- ?????? -->
+              <!-- 实验过程日志 -->
               <details v-if="experimentLog.length" class="experiment-log-details">
-                <summary>???????{{ experimentLog.length }} ??</summary>
+                <summary>实验过程日志：{{ experimentLog.length }} 条</summary>
                 <div class="log-timeline">
                   <div v-for="(entry, i) in experimentLog" :key="i" class="log-entry">
                     <span class="log-time">{{ new Date(entry.time).toLocaleTimeString("zh-CN") }}</span>
-                    <span class="log-event">{{ entry.event }}</span>
+                    <span class="log-event">{{ entry.action || entry.event }}</span>
                     <span v-if="entry.detail" class="log-detail">{{ entry.detail }}</span>
                   </div>
                 </div>

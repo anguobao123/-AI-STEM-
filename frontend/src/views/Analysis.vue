@@ -23,7 +23,7 @@ const summary = computed(() => record.value?.summary || {});
 const classMetrics = computed(() => summary.value.classMetrics || []);
 const errorSamples = computed(() => record.value?.errorSamples || []);
 const modelVersion = computed(() => record.value?.modelVersion ?? 0);
-const versionLabel = computed(() => modelVersion.value === 0 ? '模型 1.0' : '模型 2.0');
+const versionLabel = computed(() => formatModelVersionLabel(modelVersion.value, "模型 1.0"));
 const optimizationPlan = computed(() => record.value?.optimizationPlan || '');
 const reflection = computed(() => record.value?.reflection || '');
 const versionCompare = computed(() => record.value?.versionCompare || []);
@@ -41,6 +41,18 @@ const experimentConclusion = computed(() => {
   const errorCount = safeText(summary.value.errorCount);
   return `本次实验中，模型准确率为 ${accuracy}。结果说明当前数据集和训练配置已经能够完成基本分类任务，但仍存在 ${errorCount} 个错误样本，建议继续补充样本并重点检查易混淆类别。`;
 });
+
+function formatModelVersionLabel(version, fallback = "优化后模型") {
+  const value = Number(version);
+  if (Number.isNaN(value)) return fallback;
+  if (value <= 0) return "模型 1.0";
+  if (value === 1) return "模型 2.0";
+  return "优化后模型";
+}
+
+function formatVersionCompareTitle(item = {}) {
+  return `${formatModelVersionLabel(item.fromVersion, "模型 1.0")} → ${formatModelVersionLabel(item.toVersion, "优化后模型")}`;
+}
 
 async function loadRecord(recordId) {
   try {
@@ -170,7 +182,7 @@ onMounted(async () => {
             <div class="workspace-toolbar"><strong>模型版本对比</strong></div>
             <div class="workspace-body insight-body">
               <div v-for="(item, idx) in versionCompare" :key="idx">
-                <span>模型 {{ item.fromVersion + 1 }}.0 → 模型 {{ item.toVersion + 1 }}.0</span>
+                <span>{{ formatVersionCompareTitle(item) }}</span>
                 <p>优化措施：{{ item.plan || '未记录' }}</p>
               </div>
             </div>
@@ -206,29 +218,29 @@ onMounted(async () => {
         </div>
       </section>
     </template>
-      <!-- ?????? -->
+      <!-- 实验过程摘要 -->
     <section v-if="record.experimentLog && record.experimentLog.length" class="analysis-section">
-      <h3>??????</h3>
+      <h3>实验过程摘要</h3>
       <div class="log-mini">
         <div v-for="(entry, i) in record.experimentLog.slice(-8)" :key="i" class="log-mini-entry">
           <span class="log-mini-time">{{ new Date(entry.time).toLocaleTimeString("zh-CN") }}</span>
-          <span>{{ entry.event }}</span>
+          <span>{{ entry.action || entry.event }}</span>
           <span v-if="entry.detail" class="log-mini-detail">- {{ entry.detail }}</span>
         </div>
       </div>
     </section>
 
-    <!-- ??????? -->
+    <!-- 实验留痕文本 -->
     <section v-if="record.optimizationPlan || record.reflection || record.conclusion" class="analysis-section">
-      <h3>???????</h3>
+      <h3>实验留痕文本</h3>
       <div v-if="record.optimizationPlan" class="analysis-text-block">
-        <strong>?????</strong>{{ record.optimizationPlan }}
+        <strong>优化方案</strong>{{ record.optimizationPlan }}
       </div>
       <div v-if="record.reflection" class="analysis-text-block">
-        <strong>?????</strong>{{ record.reflection }}
+        <strong>实验反思</strong>{{ record.reflection }}
       </div>
       <div v-if="record.conclusion" class="analysis-text-block">
-        <strong>?????</strong>{{ record.conclusion }}
+        <strong>实验结论</strong>{{ record.conclusion }}
       </div>
     </section>
   </section>

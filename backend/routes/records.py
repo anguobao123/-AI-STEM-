@@ -1,4 +1,7 @@
-﻿from flask import Blueprint, jsonify, request
+﻿import json
+from datetime import datetime
+
+from flask import Blueprint, jsonify, request
 
 from models import ExperimentRecord, db
 
@@ -160,6 +163,7 @@ def update_record(record_id):
         ("projectName", "project_name"),
         ("groupName", "group_name"),
         ("authorName", "author_name"),
+        ("objective", "objective"),
         ("hypothesis", "hypothesis"),
         ("variableDescription", "variable_description"),
         ("datasetNote", "dataset_note"),
@@ -170,9 +174,21 @@ def update_record(record_id):
         if field in payload:
             setattr(record, attr, payload[field])
     if "stemSummary" in payload:
-        record.stem_summary = __import__("json").dumps(payload["stemSummary"], ensure_ascii=False)
+        record.stem_summary = json.dumps(payload["stemSummary"], ensure_ascii=False)
     if "title" in payload:
         record.title = payload["title"]
+    log_items = record.to_dict().get("experimentLog", [])
+    log_items.append(
+        {
+            "time": datetime.utcnow().isoformat(),
+            "step": "保存后编辑",
+            "event": "edit_record",
+            "action": "保存后编辑实验记录",
+            "detail": "更新可编辑文本字段",
+            "modelVersion": record.model_version or 0,
+        }
+    )
+    record.experiment_log = json.dumps(log_items, ensure_ascii=False)
     db.session.commit()
     return jsonify({"code": 200, "msg": "success", "data": record.to_dict()})
 
