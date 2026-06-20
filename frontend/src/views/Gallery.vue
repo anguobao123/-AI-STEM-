@@ -226,8 +226,14 @@ onMounted(async () => {
   align-items: center;
 }
 
+.workspace-body {
+  max-width: 100%;
+  overflow-x: auto;
+  padding-right: 16px;
+}
+
 .model-row {
-  grid-template-columns: minmax(190px, 1.05fr) minmax(150px, 0.82fr) minmax(76px, 0.36fr) minmax(82px, 0.38fr) minmax(96px, 0.48fr) minmax(130px, 0.7fr) minmax(96px, 0.48fr) minmax(140px, 0.62fr) minmax(430px, 1.8fr);
+  grid-template-columns: minmax(190px, 1.05fr) minmax(150px, 0.82fr) minmax(76px, 0.36fr) minmax(82px, 0.38fr) minmax(96px, 0.48fr) minmax(130px, 0.7fr) minmax(96px, 0.48fr) minmax(140px, 0.62fr) minmax(360px, 1.45fr);
 }
 
 .model-name {
@@ -268,6 +274,14 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 340px;
+  max-width: 100%;
+}
+
+.model-actions :deep(.el-button) {
+  white-space: nowrap;
 }
 
 .gallery-empty {
