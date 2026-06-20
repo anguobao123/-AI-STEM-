@@ -50,6 +50,19 @@ const mustReadSections = [
 ];
 
 const preflightChecks = ["类别名称清晰", "训练图和测试图分开", "只改变一个变量", "优化后对比 1.0 与 2.0", "保存记录后再分析"];
+const stemMap = [
+  { key: "S", title: "科学探究", step: "提出问题、实验假设、变量设计" },
+  { key: "T", title: "技术实现", step: "上传数据、训练图像分类模型" },
+  { key: "E", title: "工程优化", step: "根据错误样本改进模型 2.0" },
+  { key: "M", title: "数学分析", step: "用准确率、错误率、混淆矩阵判断表现" }
+];
+const beforeLabNotes = [
+  "类别名称要清楚",
+  "训练集和测试集要分开",
+  "一次只改变一个主要变量",
+  "批量测试比单图预测更可靠",
+  "模型错误是优化依据，不是失败"
+];
 const activeKey = ref("concept");
 const activeSection = computed(() => mustReadSections.find((section) => section.key === activeKey.value) || mustReadSections[0]);
 </script>
@@ -104,13 +117,35 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
               <strong>进入实验时需要注意</strong>
               <p>{{ activeSection.tip }}</p>
             </div>
+
+            <div class="prelab-grid">
+              <section class="prelab-card lab-module">
+                <h3>课前检查清单</h3>
+                <ul>
+                  <li v-for="check in preflightChecks" :key="check">✓ {{ check }}</li>
+                </ul>
+              </section>
+              <section class="prelab-card lab-module">
+                <h3>STEM 四要素与步骤映射</h3>
+                <div v-for="item in stemMap" :key="item.key" class="stem-map-row">
+                  <strong>{{ item.key }} · {{ item.title }}</strong>
+                  <span>{{ item.step }}</span>
+                </div>
+              </section>
+              <section class="prelab-card lab-module wide">
+                <h3>进入实验前需要知道的 5 件事</h3>
+                <ol>
+                  <li v-for="item in beforeLabNotes" :key="item">{{ item }}</li>
+                </ol>
+              </section>
+            </div>
           </div>
         </main>
       </div>
 
       <div class="bottom-actions guide-bottom">
         <router-link to="/experiments" class="guide-action">
-          <el-button type="primary" size="large">我读完了，去选择实验任务</el-button>
+          <el-button type="primary" size="large">我已理解，进入实验任务</el-button>
         </router-link>
       </div>
     </section>
@@ -238,6 +273,56 @@ const activeSection = computed(() => mustReadSections.find((section) => section.
   padding: 15px 16px;
   display: grid;
   gap: 6px;
+}
+
+.prelab-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.prelab-card {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.prelab-card.wide {
+  grid-column: 1 / -1;
+}
+
+.prelab-card h3 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 16px;
+}
+
+.prelab-card ul,
+.prelab-card ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+.stem-map-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stem-map-row:last-child {
+  border-bottom: 0;
+}
+
+.stem-map-row strong {
+  color: var(--primary);
+}
+
+.stem-map-row span {
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .attention-line strong {

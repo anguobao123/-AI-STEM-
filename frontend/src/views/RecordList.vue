@@ -20,7 +20,10 @@ const editableTextFields = [
   { key: "authorName", label: "作者署名", type: "input" },
   { key: "objective", label: "实验目标", type: "textarea" },
   { key: "hypothesis", label: "实验假设", type: "textarea" },
+  { key: "variableType", label: "变量类型", type: "input" },
   { key: "variableDescription", label: "变量说明", type: "textarea" },
+  { key: "controlledConditions", label: "控制条件", type: "textarea" },
+  { key: "expectedChange", label: "预期变化", type: "textarea" },
   { key: "datasetNote", label: "数据集说明", type: "textarea" },
   { key: "optimizationPlan", label: "优化方案", type: "textarea" },
   { key: "conclusion", label: "实验结论", type: "textarea" },
@@ -164,54 +167,38 @@ onMounted(loadRecords);
         <span class="record-count">{{ filteredItems.length }} 条记录</span>
       </div>
 
-      <div class="workspace-body">
-        <div class="decision-table record-table">
-          <div class="decision-table__row decision-table__row--head record-row">
-            <span>实验名称</span>
-            <span>准确率</span>
-            <span>样本数</span>
-            <span>错误数</span>
-            <span>保存时间</span>
-            <span>状态</span>
-            <span>本机模型</span>
-            <span>操作</span>
-          </div>
+      <div class="workspace-body record-archive">
+        <div v-if="filteredItems.length === 0" class="record-empty">没有符合筛选条件的记录。</div>
 
-          <div v-if="filteredItems.length === 0" class="record-empty">没有符合筛选条件的记录。</div>
-
-          <div class="decision-table__row record-row" v-for="row in filteredItems" :key="row.recordId">
-            <div class="record-name" data-label="实验名称">
+        <article class="archive-card lab-module" v-for="row in filteredItems" :key="row.recordId">
+          <div class="archive-main">
+            <div class="record-name">
               <strong>{{ row.projectName || row.title }}</strong>
-              <small v-if="row.groupName || row.authorName">{{ row.groupName }}{{ row.authorName ? ' / ' + row.authorName : '' }}</small>
-              <small>{{ getExperimentMeta(row.experimentId).title }}</small>
-              <small v-if="row.experimentLog && row.experimentLog.length">有实验过程记录</small>
+              <small>{{ row.groupName || "未填小组" }}{{ row.authorName ? ' / ' + row.authorName : '' }}</small>
+              <small>{{ getExperimentMeta(row.experimentId).title }} · {{ formatDateTime(row.createdAt) }}</small>
             </div>
-            <span data-label="准确率">{{ formatPercent(row.accuracy) }}</span>
-            <span data-label="样本数">{{ safeText(row.sampleCount) }}</span>
-            <span data-label="错误数">{{ safeText(row.errorCount) }}</span>
-            <span data-label="保存时间">{{ formatDateTime(row.createdAt) }}</span>
-            <span data-label="状态"><el-tag type="success">已保存</el-tag></span>
-            <span data-label="本机模型">
-              <el-tag :type="row.hasLocalModel ? 'success' : 'info'">
-                {{ row.hasLocalModel ? "已保存" : "未保存" }}
-              </el-tag>
-            </span>
-            <div class="record-actions" data-label="操作">
-              <el-button @click="router.push(`/analysis/${row.recordId}`)">查看分析</el-button>
-              <el-button type="primary" plain @click="router.push(`/report/${row.recordId}`)">查看报告</el-button>
-              <el-button plain @click="startEdit(row)">编辑记录</el-button>
-              <el-button
-                plain
-                :disabled="!row.hasLocalModel"
-                :loading="exportingModelId === row.recordId"
-                @click="handleExportModel(row)"
-              >
-                导出模型
-              </el-button>
-              <el-button type="danger" :loading="deletingId === row.recordId" @click="handleDelete(row)">删除</el-button>
-            </div>
+            <p>{{ row.objective || "未填写实验目标" }}</p>
+            <p><b>控制变量：</b>{{ row.variableType || getExperimentMeta(row.experimentId).controlVariable }}；{{ row.variableDescription || "未填写变量说明" }}</p>
           </div>
-        </div>
+          <div class="archive-metrics">
+            <div><span>准确率</span><strong>{{ formatPercent(row.testAccuracy ?? row.accuracy) }}</strong></div>
+            <div><span>错误数</span><strong>{{ safeText(row.errorCount) }}</strong></div>
+            <div><span>样本数</span><strong>{{ safeText(row.sampleCount) }}</strong></div>
+          </div>
+          <div class="archive-flags">
+            <el-tag :type="row.hasVersionCompare ? 'success' : 'info'">{{ row.hasVersionCompare ? "有模型 2.0 对比" : "暂无模型 2.0 对比" }}</el-tag>
+            <el-tag :type="row.experimentLog && row.experimentLog.length ? 'success' : 'info'">{{ row.experimentLog && row.experimentLog.length ? "有实验过程记录" : "暂无过程记录" }}</el-tag>
+            <el-tag :type="row.conclusion && row.reflection ? 'success' : 'warning'">{{ row.conclusion && row.reflection ? "已填结论反思" : "结论反思待补充" }}</el-tag>
+            <el-tag :type="row.hasLocalModel ? 'success' : 'info'">{{ row.hasLocalModel ? "本机模型已保存" : "未保存本机模型" }}</el-tag>
+          </div>
+          <div class="record-actions">
+            <el-button @click="router.push(`/analysis/${row.recordId}`)">查看分析</el-button>
+            <el-button type="primary" plain @click="router.push(`/report/${row.recordId}`)">查看报告</el-button>
+            <el-button plain @click="startEdit(row)">编辑记录</el-button>
+            <el-button plain :disabled="!row.hasLocalModel" :loading="exportingModelId === row.recordId" @click="handleExportModel(row)">导出模型</el-button>
+            <el-button type="danger" :loading="deletingId === row.recordId" @click="handleDelete(row)">删除</el-button>
+          </div>
+        </article>
       </div>
     </section>
   
@@ -291,12 +278,80 @@ onMounted(loadRecords);
   text-align: center;
 }
 
+.record-archive {
+  display: grid;
+  gap: 12px;
+}
+
+.archive-card {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(250px, 0.75fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.archive-main {
+  display: grid;
+  gap: 8px;
+}
+
+.archive-main p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.archive-main b {
+  color: var(--heading);
+}
+
+.archive-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.archive-metrics div {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-alt);
+  display: grid;
+  gap: 3px;
+}
+
+.archive-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.archive-metrics strong {
+  color: var(--heading);
+}
+
+.archive-flags {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.archive-card .record-actions {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 1100px) {
   .decision-table__row--head {
     display: none;
   }
 
   .record-row {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-card {
     grid-template-columns: 1fr;
   }
 

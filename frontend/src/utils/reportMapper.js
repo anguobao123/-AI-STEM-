@@ -55,6 +55,8 @@ export function mapRecordToReport(record) {
       { label: "类别数量", value: safeText(classCount) },
       { label: "混淆矩阵摘要", value: record.confusionMatrix?.labels?.join("、") || "暂无混淆矩阵数据" }
     ],
+    datasetSummary: record.datasetSummary || {},
+    trainConfig: record.trainConfig || {},
     analysis: buildResultAnalysis(meta, testAccuracy, summary, errorSamples),
     errorAnalysis: errorSamples.map((item) => ({
       imageName: item.imageName,
@@ -74,7 +76,10 @@ export function mapRecordToReport(record) {
     groupName: record.groupName || "",
     authorName: record.authorName || "",
     hypothesis: record.hypothesis || "",
+    variableType: record.variableType || "",
     variableDescription: record.variableDescription || "",
+    controlledConditions: record.controlledConditions || "",
+    expectedChange: record.expectedChange || "",
     datasetNote: record.datasetNote || "",
     conclusion: record.conclusion || buildConclusion(meta, testAccuracy, errorSamples.length),
     experimentLog: record.experimentLog || [],

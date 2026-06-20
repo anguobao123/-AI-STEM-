@@ -17,8 +17,8 @@ export const useExperimentStore = defineStore("experiment", {
       },
       {
         id: "exp-03",
-        title: "训练轮次对模型效果的影响",
-        summary: "观察训练轮次变化对准确率和损失的趋势影响 —— 训练多久才合适？"
+        title: "数据质量对模型稳定性的影响",
+        summary: "比较图片质量、背景复杂度和样本多样性变化后的模型表现 —— 怎样让 AI 更稳定？"
       },
       {
         id: "exp-04",

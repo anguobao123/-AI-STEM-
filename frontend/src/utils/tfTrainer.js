@@ -215,14 +215,14 @@ export async function rebuildInferenceModelFromTrainedModel(
     const targetWeights = inferenceModel.getWeights();
 
     if (copiedWeights.length !== targetWeights.length) {
-      targetWeights.forEach((tensor) => tensor.dispose?.());
       throw new Error(
         `权重数量不一致：原模型 ${copiedWeights.length}，推理模型 ${targetWeights.length}`
       );
     }
 
-    targetWeights.forEach((tensor) => tensor.dispose?.());
     inferenceModel.setWeights(copiedWeights);
+    copiedWeights.forEach((tensor) => tensor.dispose?.());
+    copiedWeights = null;
 
     const verification = await inspectModelWeights(inferenceModel);
     if (!verification.allReadable) {

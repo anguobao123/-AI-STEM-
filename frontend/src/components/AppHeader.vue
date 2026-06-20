@@ -10,7 +10,7 @@
       </router-link>
       <div class="header__status" aria-label="系统状态">
         <span class="status-dot"></span>
-        <span>实验环境就绪</span>
+        <span>浏览器实验环境</span>
       </div>
       <nav class="nav" aria-label="主导航">
         <router-link to="/">首页</router-link>

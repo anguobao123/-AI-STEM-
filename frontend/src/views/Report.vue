@@ -35,34 +35,40 @@ const reportPlainText = computed(() => {
   if (!report.value) return "";
 
   const lines = [
-    "标准实验报告",
+    "数据如何教会 AI：图像分类模型实验报告",
     `报告编号：${report.value.code}`,
     `实验编号：${report.value.id}`,
     `生成时间：${report.value.createdAt}`,
     "",
-    "一、实验名称",
-    report.value.title,
+    "一、项目信息",
+    `项目名称：${report.value.projectName || report.value.title}`,
+    `小组名称：${report.value.groupName || "未填写"}`,
+    `作者昵称：${report.value.authorName || "未填写"}`,
     "",
-    "二、实验目的",
-    report.value.purpose,
+    "二、实验目标与假设",
+    `实验目标：${report.value.purpose}`,
+    `实验假设：${report.value.hypothesis || "未填写"}`,
     "",
-    "三、实验原理",
-    report.value.principle,
-    "",
-    "四、变量设计",
+    "三、变量设计",
     `实验问题：${report.value.variableDesign.question}`,
-    `控制变量：${report.value.variableDesign.controlVariable}`,
-    `保持不变：${report.value.variableDesign.constants}`,
-    `观察指标：${report.value.variableDesign.metrics}`,
-    `报告分析重点：${report.value.variableDesign.focus}`,
+    `变量类型：${report.value.variableType || report.value.variableDesign.controlVariable}`,
+    `变量说明：${report.value.variableDescription || report.value.variableDesign.focus}`,
+    `控制条件：${report.value.controlledConditions || report.value.variableDesign.constants}`,
+    `预期变化：${report.value.expectedChange || report.value.variableDesign.metrics}`,
     "",
-    "五、实验步骤",
-    ...report.value.process.map((item, index) => `${index + 1}. ${item}`),
+    "四、数据集说明",
+    report.value.datasetNote || "未填写数据集说明",
     "",
-    "六、数据结果",
+    "五、模型训练参数",
+    `epochs：${report.value.trainConfig.epochs ?? "-"}`,
+    `batchSize：${report.value.trainConfig.batchSize ?? "-"}`,
+    `learningRate：${report.value.trainConfig.learningRate ?? "-"}`,
+    `imageSize：${report.value.trainConfig.imageSize ?? "-"}`,
+    "",
+    "六、模型 1.0 测试结果",
     ...report.value.resultTable.map((item) => `${item.label}：${item.value}`),
     "",
-    "七、结果分析",
+    "七、错误样本与混淆矩阵分析",
     ...report.value.analysis.map((item) => `- ${item}`),
     ...(report.value.errorAnalysis.length
       ? ["", "错误样本：", ...report.value.errorAnalysis.map(
@@ -71,23 +77,29 @@ const reportPlainText = computed(() => {
         )]
       : ["", "错误样本：当前记录没有明显错误样本。"]),
     "",
-    "八、改进建议",
-    ...report.value.suggestions.map((item) => `- ${item}`),
-    "",
-    "九、优化方案（模型 1.0 → 2.0）",
+    "八、优化方案",
     report.value.optimizationPlan || "暂无优化方案",
     "",
-    "十、模型版本对比",
+    "九、模型 2.0 测试结果",
+    report.value.modelVersion >= 1 ? "已进入模型 2.0，详见版本对比。" : "暂无模型 2.0 测试结果",
+    "",
+    "十、优化前后对比",
     ...(report.value.versionCompare && report.value.versionCompare.length
       ? report.value.versionCompare.map(
           (item) => formatVersionCompareTitle(item) + "：" + (item.plan || "未记录")
         )
       : ["暂无版本对比数据"]),
     "",
-    "十一、实验反思",
+    "十一、实验过程记录",
+    ...(report.value.experimentLog.length ? report.value.experimentLog.map((item) => `${item.action || item.event}：${item.detail || ""}`) : ["暂无实验过程记录"]),
+    "",
+    "十二、实验结论",
+    report.value.conclusion,
+    "",
+    "十三、实验反思",
     report.value.reflection || "暂无反思",
     "",
-    "十二、STEM 总结",
+    "十四、STEM 总结",
     ...(report.value.stemSummary
       ? [
           "S 科学探究：" + (report.value.stemSummary.science || ""),
@@ -96,9 +108,7 @@ const reportPlainText = computed(() => {
           "M 数学分析：" + (report.value.stemSummary.math || "")
         ]
       : ["暂无 STEM 总结"]),
-    "",
-    "十三、实验结论",
-    report.value.conclusion
+    ""
   ];
 
   return lines.join("\n");
@@ -206,39 +216,48 @@ function printReport() {
       </div>
 
       <section class="report-section">
-        <h3>一、实验名称</h3>
-        <p>{{ report.title }}</p>
-      </section>
-
-      <section class="report-section">
-        <h3>二、实验目的</h3>
-        <p>{{ report.purpose }}</p>
-      </section>
-
-      <section class="report-section">
-        <h3>三、实验原理</h3>
-        <p>{{ report.principle }}</p>
-      </section>
-
-      <section class="report-section">
-        <h3>四、变量设计</h3>
+        <h3>一、项目信息</h3>
         <div class="report-table">
-          <div class="report-row"><strong>实验问题</strong><span>{{ report.variableDesign.question }}</span></div>
-          <div class="report-row"><strong>控制变量</strong><span>{{ report.variableDesign.controlVariable }}</span></div>
-          <div class="report-row"><strong>保持不变</strong><span>{{ report.variableDesign.constants }}</span></div>
-          <div class="report-row"><strong>观察指标</strong><span>{{ report.variableDesign.metrics }}</span></div>
+          <div class="report-row"><strong>项目名称</strong><span>{{ report.projectName || report.title }}</span></div>
+          <div class="report-row"><strong>小组名称</strong><span>{{ report.groupName || "未填写" }}</span></div>
+          <div class="report-row"><strong>作者昵称</strong><span>{{ report.authorName || "未填写" }}</span></div>
         </div>
       </section>
 
       <section class="report-section">
-        <h3>五、实验步骤</h3>
-        <ol class="report-list">
-          <li v-for="(item, index) in report.process" :key="`${index}-${item}`">{{ item }}</li>
-        </ol>
+        <h3>二、实验目标与假设</h3>
+        <p>{{ report.purpose }}</p>
+        <p>实验假设：{{ report.hypothesis || "未填写" }}</p>
       </section>
 
       <section class="report-section">
-        <h3>六、数据结果</h3>
+        <h3>三、变量设计</h3>
+        <div class="report-table">
+          <div class="report-row"><strong>实验问题</strong><span>{{ report.variableDesign.question }}</span></div>
+          <div class="report-row"><strong>变量类型</strong><span>{{ report.variableType || report.variableDesign.controlVariable }}</span></div>
+          <div class="report-row"><strong>变量说明</strong><span>{{ report.variableDescription || report.variableDesign.focus }}</span></div>
+          <div class="report-row"><strong>控制条件</strong><span>{{ report.controlledConditions || report.variableDesign.constants }}</span></div>
+          <div class="report-row"><strong>预期变化</strong><span>{{ report.expectedChange || report.variableDesign.metrics }}</span></div>
+        </div>
+      </section>
+
+      <section class="report-section">
+        <h3>四、数据集说明</h3>
+        <p>{{ report.datasetNote || "未填写数据集说明" }}</p>
+      </section>
+
+      <section class="report-section">
+        <h3>五、模型训练参数</h3>
+        <div class="report-table">
+          <div class="report-row"><strong>epochs</strong><span>{{ report.trainConfig.epochs ?? "-" }}</span></div>
+          <div class="report-row"><strong>batchSize</strong><span>{{ report.trainConfig.batchSize ?? "-" }}</span></div>
+          <div class="report-row"><strong>learningRate</strong><span>{{ report.trainConfig.learningRate ?? "-" }}</span></div>
+          <div class="report-row"><strong>imageSize</strong><span>{{ report.trainConfig.imageSize ?? "-" }}</span></div>
+        </div>
+      </section>
+
+      <section class="report-section">
+        <h3>六、模型 1.0 测试结果</h3>
         <table class="result-table">
           <tbody>
             <tr v-for="item in report.resultTable" :key="item.label">
@@ -250,7 +269,7 @@ function printReport() {
       </section>
 
       <section class="report-section">
-        <h3>七、结果分析</h3>
+        <h3>七、错误样本与混淆矩阵分析</h3>
         <p v-for="item in report.analysis" :key="item">{{ item }}</p>
         <div class="error-analysis">
           <strong>错误样本分析</strong>
@@ -279,45 +298,59 @@ function printReport() {
       </section>
 
       <section class="report-section">
-        <h3>八、改进建议</h3>
-        <ul class="report-list">
-          <li v-for="(item, index) in report.suggestions" :key="`${index}-${item}`">{{ item }}</li>
-        </ul>
+        <h3>八、优化方案</h3>
+        <p>{{ report.optimizationPlan || "暂无优化方案" }}</p>
       </section>
 
-      <section v-if="report.optimizationPlan" class="report-section">
-        <h3>九、优化方案（模型 1.0 → 2.0）</h3>
-        <p>{{ report.optimizationPlan }}</p>
+      <section class="report-section">
+        <h3>九、模型 2.0 测试结果</h3>
+        <p>{{ report.modelVersion >= 1 ? "已进入模型 2.0。若已完成批量测试，请结合优化前后对比判断优化是否有效。" : "暂无模型 2.0 测试结果。" }}</p>
       </section>
 
       <section v-if="report.versionCompare && report.versionCompare.length" class="report-section">
-        <h3>十、模型版本对比</h3>
+        <h3>十、优化前后对比</h3>
         <div class="report-table">
           <div v-for="(item, idx) in report.versionCompare" :key="idx" class="report-row">
             <strong>{{ formatVersionCompareTitle(item) }}</strong>
-            <span>准确率：{{ (item.accuracy * 100).toFixed(1) }}% | 优化措施：{{ item.plan || "未记录" }}</span>
+            <span>优化前：{{ item.beforeAccuracy == null ? "-" : `${Math.round(item.beforeAccuracy * 100)}%` }}；优化后：{{ item.afterAccuracy == null ? "待测试" : `${Math.round(item.afterAccuracy * 100)}%` }}；优化措施：{{ item.plan || "未记录" }}</span>
           </div>
         </div>
       </section>
+      <section v-else class="report-section">
+        <h3>十、优化前后对比</h3>
+        <p>暂无优化对比。</p>
+      </section>
+
+      <section class="report-section">
+        <h3>十一、实验过程记录</h3>
+        <ol v-if="report.experimentLog.length" class="report-list">
+          <li v-for="(item, index) in report.experimentLog" :key="`${index}-${item.time}`">{{ item.action || item.event }}：{{ item.detail || "已记录" }}</li>
+        </ol>
+        <p v-else>暂无实验过程记录。</p>
+      </section>
+
+      <section class="report-section">
+        <h3>十二、实验结论</h3>
+        <p>{{ report.conclusion }}</p>
+      </section>
 
       <section v-if="report.reflection" class="report-section">
-        <h3>十一、实验反思</h3>
+        <h3>十三、实验反思</h3>
         <p>{{ report.reflection }}</p>
+      </section>
+      <section v-else class="report-section">
+        <h3>十三、实验反思</h3>
+        <p>暂无实验反思。</p>
       </section>
 
       <section v-if="report.stemSummary" class="report-section">
-        <h3>十二、STEM 总结</h3>
+        <h3>十四、STEM 总结</h3>
         <div class="report-table">
           <div class="report-row"><strong>S 科学探究</strong><span>{{ report.stemSummary.science }}</span></div>
           <div class="report-row"><strong>T 技术实现</strong><span>{{ report.stemSummary.tech }}</span></div>
           <div class="report-row"><strong>E 工程优化</strong><span>{{ report.stemSummary.engineering }}</span></div>
           <div class="report-row"><strong>M 数学分析</strong><span>{{ report.stemSummary.math }}</span></div>
         </div>
-      </section>
-
-      <section class="report-section">
-        <h3>十三、实验结论</h3>
-        <p>{{ report.conclusion }}</p>
       </section>
     </article>
   </section>

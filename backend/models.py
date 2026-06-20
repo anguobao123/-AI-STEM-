@@ -52,7 +52,10 @@ class ExperimentRecord(db.Model):
     group_name = db.Column(db.String(100), default="")
     author_name = db.Column(db.String(100), default="")
     hypothesis = db.Column(db.Text, default="")
+    variable_type = db.Column(db.String(100), default="")
     variable_description = db.Column(db.Text, default="")
+    controlled_conditions = db.Column(db.Text, default="")
+    expected_change = db.Column(db.Text, default="")
     dataset_note = db.Column(db.Text, default="")
     conclusion = db.Column(db.Text, default="")
     experiment_log = db.Column(db.Text, default="[]")
@@ -82,7 +85,10 @@ class ExperimentRecord(db.Model):
             "groupName": self.group_name or "",
             "authorName": self.author_name or "",
             "hypothesis": self.hypothesis or "",
+            "variableType": self.variable_type or "",
             "variableDescription": self.variable_description or "",
+            "controlledConditions": self.controlled_conditions or "",
+            "expectedChange": self.expected_change or "",
             "datasetNote": self.dataset_note or "",
             "conclusion": self.conclusion or "",
             "experimentLog": _safe_json_loads(self.experiment_log, []),
@@ -114,7 +120,10 @@ class ExperimentRecord(db.Model):
             group_name=payload.get("groupName", ""),
             author_name=payload.get("authorName", ""),
             hypothesis=payload.get("hypothesis", ""),
+            variable_type=payload.get("variableType", ""),
             variable_description=payload.get("variableDescription", ""),
+            controlled_conditions=payload.get("controlledConditions", ""),
+            expected_change=payload.get("expectedChange", ""),
             dataset_note=payload.get("datasetNote", ""),
             conclusion=payload.get("conclusion", ""),
             experiment_log=_safe_json_dumps(payload.get("experimentLog"), []),

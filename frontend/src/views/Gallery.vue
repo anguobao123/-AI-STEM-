@@ -22,7 +22,7 @@ function formatModelVersionLabel(version) {
 const stats = computed(() => {
   const items = records.value;
   if (items.length === 0) {
-    return { total: 0, avgAccuracy: null, optimizationCount: 0, uniqueClasses: 0 };
+    return { total: 0, avgAccuracy: null, optimizationCount: 0, logCount: 0, reflectionCount: 0, uniqueClasses: 0 };
   }
 
   const accuracies = items
@@ -33,6 +33,8 @@ const stats = computed(() => {
   const optimizationCount = items.filter(
     (r) => r.hasVersionCompare || (r.optimizationPlan && r.optimizationPlan.trim())
   ).length;
+  const logCount = items.filter((r) => r.experimentLog && r.experimentLog.length).length;
+  const reflectionCount = items.filter((r) => r.conclusion && r.reflection).length;
 
   const classSets = new Set();
   items.forEach((r) => {
@@ -44,6 +46,8 @@ const stats = computed(() => {
     total: items.length,
     avgAccuracy,
     optimizationCount,
+    logCount,
+    reflectionCount,
     uniqueClasses: classSets.size
   };
 });
@@ -69,6 +73,7 @@ const realAchievements = computed(() =>
       title: displayTitle,
       experimentName: meta.shortName || meta.title,
       objective: item.objective || meta.objective || "",
+      variableText: item.variableType || item.variableDescription || meta.controlVariable || "",
       modelVersion: Number.isNaN(numericModelVersion) ? 0 : numericModelVersion,
       modelVersionLabel: formatModelVersionLabel(numericModelVersion),
       accuracy: item.accuracy,
@@ -164,6 +169,14 @@ onMounted(async () => {
           <span class="stat-label">含优化对比</span>
         </div>
         <div class="stat-card">
+          <span class="stat-value">{{ stats.logCount }}</span>
+          <span class="stat-label">有完整实验留痕</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{{ stats.reflectionCount }}</span>
+          <span class="stat-label">已填结论反思</span>
+        </div>
+        <div class="stat-card">
           <span class="stat-value">{{ stats.uniqueClasses || "-" }}</span>
           <span class="stat-label">分类类别总数</span>
         </div>
@@ -207,6 +220,14 @@ onMounted(async () => {
               </div>
 
               <div class="card-details">
+                <div class="card-detail">
+                  <span class="detail-label">研究问题</span>
+                  <span class="detail-text">{{ item.objective || "未填写实验目标" }}</span>
+                </div>
+                <div class="card-detail" v-if="item.variableText">
+                  <span class="detail-label">控制变量</span>
+                  <span class="detail-text">{{ item.variableText }}</span>
+                </div>
                 <div class="card-detail" v-if="item.modelVersion > 0">
                   <span class="detail-label">模型版本</span>
                   <el-tag size="small" type="warning">{{ item.modelVersionLabel }}</el-tag>
@@ -226,7 +247,7 @@ onMounted(async () => {
               </div>
 
               <div class="card-excerpt" v-if="item.optimizationPlan">
-                <span class="excerpt-label">优化方案</span>
+                <span class="excerpt-label">优化亮点</span>
                 <p class="excerpt-text">{{ item.optimizationPlan }}</p>
               </div>
 
