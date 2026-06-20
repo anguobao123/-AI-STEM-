@@ -1,19 +1,101 @@
+# Node / frontend
 node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+
+# Build outputs
 dist/
+frontend/dist/
 build/
-coverage/
-*.log
-*.tmp
-.env
-.env.*
+frontend/build/
+.vite/
+
+# Python / backend
 __pycache__/
-*.pyc
+pycache/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
 .venv/
 venv/
-frontend/node_modules/
-frontend/dist/
-backend/__pycache__/
-backend/instance/*.db
+env/
+backend/.venv/
+backend/venv/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment files
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+
+# Database / runtime files
+*.sqlite
+*.sqlite3
+*.db
+backend/.sqlite
+backend/.sqlite3
+backend/.db
+instance/
+backend/instance/
+
+# Uploads / generated user data
+uploads/
+backend/uploads/
+frontend/uploads/
+data/uploads/
+runtime/
+tmp/
+temp/
+logs/
+*.log
+
+# Model / generated experiment artifacts
+models/generated/
+model-cache/
+*.h5
+*.onnx
+*.tflite
+*.bin
+*.weights
+*.weights.bin
+
+# Datasets
+datasets/
+data/datasets/
+*.zip
+*.rar
+*.7z
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+
+# Codex / agent files
+AGENTS.md
+agent.md
+Agent.md
+.agents/
+.codex/
+codex-output/
+codex-notes/
+*.codex.md
+
+# Project-local generated/runtime files
 .npm-cache/
 .tmp_test_images/
 tmp_playwright/
