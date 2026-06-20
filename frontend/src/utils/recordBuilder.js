@@ -1,4 +1,4 @@
-export function buildMockRecordPayload(labData) {
+﻿export function buildMockRecordPayload(labData) {
   return {
     experimentId: labData.experimentId,
     title: labData.title,
@@ -46,6 +46,11 @@ export function buildMockRecordPayload(labData) {
         reason: "图像中绿色面积较大，与植物类别特征相近。"
       }
     ],
+    optimizationPlan: null,
+    reflection: null,
+    versionCompare: [],
+    stemSummary: null,
+    modelVersion: 0,
     suggestions: [
       "增加每个类别的样本数量。",
       "减少背景干扰明显的图片。",
@@ -60,7 +65,8 @@ export function buildRealRecordPayload(
   trainingResult,
   testResults = [],
   batchTestResult = null,
-  modelInfo = null
+  modelInfo = null,
+  courseFields = {}
 ) {
   if (!trainingResult) {
     throw new Error("真实训练结果不存在，无法保存实验记录。");
@@ -128,6 +134,11 @@ export function buildRealRecordPayload(
   return {
     experimentId: labData.experimentId,
     title: `${labData.title}（真实训练）`,
+    modelVersion: courseFields.modelVersion ?? 0,
+    optimizationPlan: courseFields.optimizationPlan ?? null,
+    reflection: courseFields.reflection ?? null,
+    versionCompare: courseFields.versionCompare ?? [],
+    stemSummary: courseFields.stemSummary ?? null,
     objective: labData.objective,
     status: "completed",
     datasetSummary: trainingResult.datasetSummary,

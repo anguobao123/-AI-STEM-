@@ -675,13 +675,26 @@ async function saveRecord() {
   saving.value = true;
   saveError.value = "";
   try {
+    const courseFields = {
+      modelVersion: modelVersion.value,
+      optimizationPlan: optimizationPlan.value,
+      reflection: reflection.value,
+      versionCompare: [...versionHistory.value]
+    };
     const payload = buildRealRecordPayload(
       labData.value,
       realResult.value,
       testResults.value,
       batchTestResult.value,
-      buildCurrentModelInfo(savedModelInfo.value)
+      buildCurrentModelInfo(savedModelInfo.value),
+      courseFields
     );
+    payload.stemSummary = {
+      science: '探究了' + (labData.value?.title || '图像分类') + '中数据变化对模型表现的影响。',
+      tech: '使用 TensorFlow.js 在浏览器端完成图像分类模型训练与测试。',
+      engineering: modelVersion.value >= 1 ? '从模型 1.0 到模型 2.0，优化措施：' + (optimizationPlan.value || '待填写') : '模型 1.0 初始训练完成。',
+      math: '准确率 ' + ((realResult.value?.summary?.accuracy || 0) * 100).toFixed(1) + '%，错误样本 ' + (realResult.value?.summary?.errorCount || 0) + ' 个。'
+    };
     const result = await createRecord(payload);
     savedRecordId.value = result.recordId;
     router.push(`/analysis/${result.recordId}`);
