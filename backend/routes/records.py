@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+﻿from flask import Blueprint, jsonify, request
 
 from models import ExperimentRecord, db
 
@@ -171,6 +171,7 @@ def list_records():
                 "recordId": record_data["recordId"],
                 "experimentId": record_data["experimentId"],
                 "title": record_data["title"],
+                "objective": record_data.get("objective", ""),
                 "status": record_data["status"],
                 "accuracy": summary.get("accuracy", 0),
                 "testAccuracy": summary.get("testAccuracy", summary.get("accuracy", 0)),
@@ -184,6 +185,11 @@ def list_records():
                 "modelKey": model_key,
                 "modelStorage": train_config.get("modelStorage", {}),
                 "modelCreatedAt": model_info.get("createdAt") or model_info.get("savedAt"),
+                "optimizationPlan": record_data.get("optimizationPlan", ""),
+                "modelVersion": record_data.get("modelVersion", 0),
+                "hasVersionCompare": bool(record_data.get("versionCompare", [])),
+                "reflection": record_data.get("reflection", ""),
+                "stemSummary": record_data.get("stemSummary", {}),
             }
         )
     return jsonify({"code": 200, "msg": "success", "data": {"items": items}})

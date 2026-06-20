@@ -1,123 +1,112 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { createCommunityShare, getRecordList } from "../utils/api";
+import { getRecordList } from "../utils/api";
 import { demoAchievements, getExperimentMeta } from "../utils/experimentContent";
 import { formatDateTime, formatPercent, safeText } from "../utils/formatters";
-import { exportSavedRecordModel } from "../utils/modelExport";
 
 const router = useRouter();
 const loading = ref(true);
 const error = ref("");
 const records = ref([]);
-const exportingModelId = ref(null);
-const sharingId = ref(null);
 
-const myAchievements = computed(() =>
+const stats = computed(() => {
+  const items = records.value;
+  if (items.length === 0) {
+    return { total: 0, avgAccuracy: null, optimizationCount: 0, uniqueClasses: 0 };
+  }
+
+  const accuracies = items
+    .map((r) => (typeof r.accuracy === "number" && !Number.isNaN(r.accuracy) ? r.accuracy : null))
+    .filter((v) => v !== null);
+  const avgAccuracy = accuracies.length > 0 ? accuracies.reduce((a, b) => a + b, 0) / accuracies.length : null;
+
+  const optimizationCount = items.filter(
+    (r) => r.hasVersionCompare || (r.optimizationPlan && r.optimizationPlan.trim())
+  ).length;
+
+  const classSets = new Set();
+  items.forEach((r) => {
+    const names = r.classNames || [];
+    names.forEach((n) => { if (n) classSets.add(n); });
+  });
+
+  return {
+    total: items.length,
+    avgAccuracy,
+    optimizationCount,
+    uniqueClasses: classSets.size
+  };
+});
+
+const realAchievements = computed(() =>
   records.value.map((item) => {
     const meta = getExperimentMeta(item.experimentId);
-    const hasModel = item.hasLocalModel === true || Boolean(item.modelKey);
-    const classCount = item.classCount || item.classNames?.length || 0;
+    const classNames = item.classNames || [];
+    const hasV2 = item.hasVersionCompare || (item.modelVersion && item.modelVersion >= 2);
+    const planText = item.optimizationPlan || "";
+    const reflectText = item.reflection || "";
+    const stemData = item.stemSummary || {};
+
     return {
       id: `record-${item.recordId}`,
       recordId: item.recordId,
-      sourceType: "mine",
-      sourceLabel: "我的实验",
-      title: item.title || `${meta.title}模型`,
-      experimentName: meta.title,
-      classCount,
-      sampleCount: item.sampleCount || 0,
-      testAccuracy: item.testAccuracy ?? item.accuracy,
-      hasModel,
-      canExport: hasModel,
+      sourceType: "record",
+      sourceLabel: "真实实验",
+      title: item.title || meta.title,
+      experimentName: meta.shortName || meta.title,
+      objective: item.objective || meta.objective || "",
+      modelVersion: item.modelVersion || 0,
+      accuracy: item.accuracy,
+      testTotal: item.sampleCount || 0,
+      errorCount: item.errorCount,
+      classCount: item.classCount || classNames.length,
+      classNames,
+      hasVersionCompare: hasV2,
+      optimizationPlan: planText ? (planText.length > 80 ? planText.slice(0, 80) + "..." : planText) : "",
+      reflection: reflectText ? (reflectText.length > 80 ? reflectText.slice(0, 80) + "..." : reflectText) : "",
+      stemSummary: stemData,
       savedAt: item.createdAt,
-      modelScope: hasModel ? "仅当前浏览器可用" : "未保存本机模型",
       analysisPath: `/analysis/${item.recordId}`,
-      reportPath: `/report/${item.recordId}`,
-      modelKey: item.modelKey || ""
+      reportPath: `/report/${item.recordId}`
     };
   })
 );
 
-const modelRows = computed(() => [
-  ...myAchievements.value,
-  ...demoAchievements.map((item) => ({
+const demoAchievementCards = computed(() =>
+  demoAchievements.map((item) => ({
     id: `demo-${item.reportId}-${item.title}`,
     recordId: item.reportId,
     sourceType: "demo",
     sourceLabel: "示例成果",
     title: item.title,
     experimentName: item.sourceExperiment,
+    objective: item.modelNote || "",
+    modelVersion: 0,
+    accuracy: item.accuracy,
+    testTotal: item.sampleCount || 0,
+    errorCount: null,
     classCount: item.classCount || 0,
-    sampleCount: item.sampleCount || 0,
-    testAccuracy: item.accuracy,
-    hasModel: false,
-    canExport: false,
+    classNames: item.classLabel ? item.classLabel.split(" / ") : [],
+    hasVersionCompare: false,
+    optimizationPlan: "",
+    reflection: "",
+    stemSummary: null,
     savedAt: "",
-    modelScope: "示例仅展示结果",
     analysisPath: `/analysis/${item.reportId}`,
     reportPath: `/report/${item.reportId}`
   }))
-]);
+);
 
-async function handleExportModel(item) {
-  if (!item.canExport) {
-    ElMessage.warning("当前成果没有可导出的本机模型。");
-    return;
-  }
-
-  exportingModelId.value = item.recordId;
-  try {
-    await exportSavedRecordModel(item.recordId, item);
-    ElMessage.success("模型导出已开始，请查看浏览器下载列表。");
-  } catch (err) {
-    ElMessage.error(err.message || "模型导出失败");
-  } finally {
-    exportingModelId.value = null;
-  }
-}
-
-function handleTestModel(item) {
-  if (item.sourceType === "mine" && item.hasModel) {
-    router.push({ path: "/model-import", query: { recordId: item.recordId } });
-    return;
-  }
-
-  ElMessage.info("该成果没有可直接读取的本机模型，可在导入测试页上传导出的模型文件进行测试。");
-  router.push("/model-import");
-}
-
-function handleShare(item) {
-  if (item.sourceType !== "mine") {
-    ElMessage.warning("示例成果不能发布到社区，请分享自己的实验成果。");
-    return;
-  }
-
-  sharingId.value = item.recordId;
-  createCommunityShare({
-    recordId: item.recordId,
-    title: item.title,
-    experimentTitle: item.experimentName
-  })
-    .then((share) => {
-      ElMessage.success("成果已发布到社区。模型文件不会自动同步到社区。");
-      router.push(`/community/${share.shareId}`);
-    })
-    .catch((err) => {
-      ElMessage.error(err.message || "社区分享失败");
-    })
-    .finally(() => {
-      sharingId.value = null;
-    });
-}
+const hasRealRecords = computed(() => records.value.length > 0);
 
 onMounted(async () => {
   try {
     const data = await getRecordList();
     records.value = data.items || [];
   } catch (err) {
-    error.value = err.message || "成果展示加载失败。";
+    error.value = err.message || "课程成果加载失败，请检查后端服务是否已启动。";
   } finally {
     loading.value = false;
   }
@@ -128,81 +117,174 @@ onMounted(async () => {
   <section class="gallery-page page-layout">
     <header class="page-heading">
       <div class="page-heading__copy">
-        <span class="gallery-kicker">模型成果库</span>
-        <h1 class="page-title">图像分类模型成果列表</h1>
-      </div>
-      <div class="gallery-heading__actions">
-        <router-link to="/community"><el-button plain>社区成果</el-button></router-link>
-        <router-link to="/model-import"><el-button plain>导入模型测试</el-button></router-link>
-        <router-link to="/records"><el-button type="primary" plain>前往记录中心</el-button></router-link>
+        <span class="gallery-kicker">STEM 课程成果</span>
+        <h1 class="page-title">课程成果展示</h1>
+        <p class="page-subtitle">这里展示同学们完成的图像分类实验成果。真实成果来自已保存的实验记录，示例成果用于展示课程可能产出。</p>
       </div>
     </header>
 
-    <section class="workspace-shell">
-      <div class="workspace-toolbar">
-        <strong>成果列表</strong>
-        <span class="gallery-note">汇总实验记录、分析报告、已保存模型、导出和导入测试入口</span>
-      </div>
+    <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
 
+    <div v-else-if="loading" class="workspace-shell">
       <div class="workspace-body">
-        <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
-        <div v-else-if="loading"><el-skeleton :rows="6" animated /></div>
-        <div v-else class="decision-table model-table">
-          <div class="decision-table__row decision-table__row--head model-row">
-            <span>成果名称</span>
-            <span>来源实验</span>
-            <span>类别数量</span>
-            <span>样本数量</span>
-            <span>测试准确率</span>
-            <span>是否包含模型</span>
-            <span>是否支持导出</span>
-            <span>保存时间</span>
-            <span>操作</span>
-          </div>
+        <el-skeleton :rows="6" animated />
+      </div>
+    </div>
 
-          <div class="decision-table__row model-row" v-for="item in modelRows" :key="item.id">
-            <div class="model-name" data-label="成果名称">
-              <strong>{{ item.title }}</strong>
-              <div class="result-meta">
-                <el-tag :type="item.sourceType === 'mine' ? 'success' : 'info'">{{ item.sourceLabel }}</el-tag>
-                <small>#{{ item.recordId }}</small>
+    <template v-else>
+      <!-- Stats summary bar -->
+      <section class="stats-bar" v-if="stats.total > 0">
+        <div class="stat-card">
+          <span class="stat-value">{{ stats.total }}</span>
+          <span class="stat-label">已保存成果</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{{ stats.avgAccuracy !== null ? formatPercent(stats.avgAccuracy) : "-" }}</span>
+          <span class="stat-label">平均准确率</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{{ stats.optimizationCount }}</span>
+          <span class="stat-label">含优化对比</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">{{ stats.uniqueClasses || "-" }}</span>
+          <span class="stat-label">分类类别总数</span>
+        </div>
+      </section>
+
+      <!-- Real achievement cards -->
+      <section class="achievement-section" v-if="hasRealRecords">
+        <h2 class="section-title">真实实验成果</h2>
+        <div class="achievement-grid">
+          <article class="achievement-card" v-for="item in realAchievements" :key="item.id">
+            <div class="card-header">
+              <div class="card-title-row">
+                <h3 class="card-title">{{ item.title }}</h3>
+                <el-tag size="small" type="success">{{ item.sourceLabel }}</el-tag>
+              </div>
+              <span class="card-meta" v-if="item.savedAt">{{ formatDateTime(item.savedAt) }}</span>
+              <span class="card-meta" v-else>-</span>
+            </div>
+
+            <div class="card-body">
+              <p class="card-objective" v-if="item.objective">{{ item.objective }}</p>
+
+              <div class="card-stats">
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ formatPercent(item.accuracy) }}</span>
+                  <span class="card-stat-label">准确率</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ safeText(item.testTotal) }}</span>
+                  <span class="card-stat-label">测试图片</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ safeText(item.errorCount) }}</span>
+                  <span class="card-stat-label">错误数量</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ safeText(item.classCount) }}</span>
+                  <span class="card-stat-label">分类类别</span>
+                </div>
+              </div>
+
+              <div class="card-details">
+                <div class="card-detail" v-if="item.modelVersion > 0">
+                  <span class="detail-label">模型版本</span>
+                  <el-tag size="small" type="warning">v{{ item.modelVersion }}</el-tag>
+                </div>
+                <div class="card-detail" v-if="item.hasVersionCompare">
+                  <span class="detail-label">版本对比</span>
+                  <el-tag size="small" type="primary">含模型 1.0 / 2.0 对比</el-tag>
+                </div>
+                <div class="card-detail" v-if="item.classNames.length > 0">
+                  <span class="detail-label">分类任务</span>
+                  <span class="detail-text">{{ item.classNames.join(" / ") }}</span>
+                </div>
+              </div>
+
+              <div class="card-excerpt" v-if="item.optimizationPlan">
+                <span class="excerpt-label">优化方案</span>
+                <p class="excerpt-text">{{ item.optimizationPlan }}</p>
+              </div>
+
+              <div class="card-excerpt" v-if="item.reflection">
+                <span class="excerpt-label">实验反思</span>
+                <p class="excerpt-text">{{ item.reflection }}</p>
+              </div>
+
+              <div class="card-stem" v-if="item.stemSummary && Object.keys(item.stemSummary).length > 0">
+                <span class="excerpt-label">STEM 亮点</span>
+                <div class="stem-tags">
+                  <el-tag
+                    v-for="(val, key) in item.stemSummary"
+                    :key="key"
+                    size="small"
+                    type="info"
+                  >{{ key }}: {{ val }}</el-tag>
+                </div>
               </div>
             </div>
-            <span data-label="来源实验">{{ item.experimentName }}</span>
-            <span data-label="类别数量">{{ safeText(item.classCount) }}</span>
-            <span data-label="样本数量">{{ safeText(item.sampleCount) }}</span>
-            <span data-label="测试准确率">{{ formatPercent(item.testAccuracy) }}</span>
-            <span data-label="是否包含模型" class="model-state">
-              <el-tag :type="item.hasModel ? 'success' : 'info'">{{ item.hasModel ? "包含模型" : "无模型文件" }}</el-tag>
-              <small v-if="item.hasModel">{{ item.modelScope }}</small>
-              <small v-else>{{ item.modelScope }}</small>
-            </span>
-            <span data-label="是否支持导出">
-              <el-tag :type="item.canExport ? 'success' : 'info'">{{ item.canExport ? "支持导出" : "不可导出" }}</el-tag>
-            </span>
-            <span data-label="保存时间">{{ item.savedAt ? formatDateTime(item.savedAt) : "示例" }}</span>
-            <div class="model-actions" data-label="操作">
-              <router-link :to="item.analysisPath"><el-button>查看分析</el-button></router-link>
-              <router-link :to="item.reportPath"><el-button type="primary" plain>查看报告</el-button></router-link>
-              <el-button plain @click="handleTestModel(item)">测试模型</el-button>
-              <el-button
-                plain
-                :disabled="!item.canExport"
-                :loading="exportingModelId === item.recordId"
-                @click="handleExportModel(item)"
-              >
-                导出模型
-              </el-button>
-              <el-button plain :loading="sharingId === item.recordId" @click="handleShare(item)">分享到社区</el-button>
-            </div>
-          </div>
 
-          <div v-if="modelRows.length === 0" class="gallery-empty">
-            暂无我的模型成果。请先完成一次图像分类实验并保存记录。
-          </div>
+            <div class="card-footer">
+              <el-button @click="router.push(item.analysisPath)">查看分析</el-button>
+              <el-button type="primary" plain @click="router.push(item.reportPath)">查看报告</el-button>
+            </div>
+          </article>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <!-- Demo achievement cards -->
+      <section class="achievement-section">
+        <h2 class="section-title" v-if="hasRealRecords">示例成果</h2>
+        <h2 class="section-title" v-else>示例成果</h2>
+        <p class="section-desc" v-if="!hasRealRecords">暂无真实成果，请先完成一次实验并保存记录。以下为示例成果，展示课程可能的产出。</p>
+        <p class="section-desc" v-else>以下为示例成果，用于展示课程可能产出，非真实实验记录。</p>
+
+        <div class="achievement-grid">
+          <article class="achievement-card achievement-card--demo" v-for="item in demoAchievementCards" :key="item.id">
+            <div class="card-header">
+              <div class="card-title-row">
+                <h3 class="card-title">{{ item.title }}</h3>
+                <el-tag size="small" type="info">{{ item.sourceLabel }}</el-tag>
+              </div>
+              <span class="card-meta">课程演示组</span>
+            </div>
+
+            <div class="card-body">
+              <p class="card-objective" v-if="item.objective">{{ item.objective }}</p>
+
+              <div class="card-stats">
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ formatPercent(item.accuracy) }}</span>
+                  <span class="card-stat-label">准确率</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ safeText(item.testTotal) }}</span>
+                  <span class="card-stat-label">样本数量</span>
+                </div>
+                <div class="card-stat">
+                  <span class="card-stat-value">{{ safeText(item.classCount) }}</span>
+                  <span class="card-stat-label">分类类别</span>
+                </div>
+              </div>
+
+              <div class="card-details" v-if="item.classNames.length > 0">
+                <div class="card-detail">
+                  <span class="detail-label">分类任务</span>
+                  <span class="detail-text">{{ item.classNames.join(" / ") }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <el-button @click="router.push(item.analysisPath)">查看分析</el-button>
+              <el-button type="primary" plain @click="router.push(item.reportPath)">查看报告</el-button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </template>
   </section>
 </template>
 
@@ -213,99 +295,240 @@ onMounted(async () => {
   font-weight: 800;
 }
 
-.gallery-note {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.gallery-heading__actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.workspace-body {
-  max-width: 100%;
-  overflow-x: auto;
-  padding-right: 16px;
-}
-
-.model-row {
-  grid-template-columns: minmax(190px, 1.05fr) minmax(150px, 0.82fr) minmax(76px, 0.36fr) minmax(82px, 0.38fr) minmax(96px, 0.48fr) minmax(130px, 0.7fr) minmax(96px, 0.48fr) minmax(140px, 0.62fr) minmax(360px, 1.45fr);
-}
-
-.model-name {
+/* Stats bar */
+.stats-bar {
   display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 20px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.model-name strong {
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
   color: var(--heading);
 }
 
-.model-name small,
-.model-row > span {
+.stat-label {
+  font-size: 13px;
   color: var(--muted);
-}
-
-.result-meta,
-.model-state {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.model-state {
-  align-items: flex-start;
-  flex-direction: column;
-}
-
-.model-state small {
-  color: var(--muted);
-  font-size: 12px;
   font-weight: 700;
-  line-height: 1.4;
 }
 
-.model-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  min-width: 340px;
-  max-width: 100%;
+/* Section headers */
+.achievement-section {
+  margin-bottom: 36px;
 }
 
-.model-actions :deep(.el-button) {
-  white-space: nowrap;
+.section-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--heading);
+  margin: 0 0 8px 0;
 }
 
-.gallery-empty {
-  padding: 28px;
+.section-desc {
   color: var(--muted);
-  text-align: center;
+  font-size: 14px;
+  margin: 0 0 20px 0;
 }
 
-@media (max-width: 1100px) {
-  .decision-table__row--head {
-    display: none;
+/* Achievement grid */
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+/* Achievement card */
+.achievement-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow 0.2s;
+}
+
+.achievement-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.achievement-card--demo {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--heading);
+  margin: 0;
+  flex: 1;
+}
+
+.card-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.card-objective {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Card mini stats */
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.card-stat {
+  text-align: center;
+  padding: 8px 4px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--heading);
+}
+
+.card-stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Card details */
+.card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  min-width: 64px;
+}
+
+.detail-text {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Excerpts */
+.card-excerpt {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+}
+
+.excerpt-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.excerpt-text {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* STEM tags */
+.card-stem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stem-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Card footer */
+.card-footer {
+  display: flex;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .model-row {
+  .achievement-grid {
     grid-template-columns: 1fr;
   }
 
-  .model-row > *::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 4px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 800;
+  .card-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .stats-bar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card-footer {
+    flex-direction: column;
   }
 }
 </style>
